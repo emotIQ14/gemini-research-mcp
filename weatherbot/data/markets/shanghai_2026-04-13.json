@@ -1,0 +1,906 @@
+{
+  "city": "shanghai",
+  "city_name": "Shanghai",
+  "date": "2026-04-13",
+  "unit": "C",
+  "station": "ZSPD",
+  "event_end_date": "2026-04-13T12:00:00Z",
+  "hours_at_discovery": 52.1,
+  "status": "closed",
+  "position": {
+    "market_id": "1924553",
+    "question": "Will the highest temperature in Shanghai be 17°C on April 13?",
+    "bucket_low": 17.0,
+    "bucket_high": 17.0,
+    "entry_price": 0.25,
+    "bid_at_entry": 0.234,
+    "spread": 0.016,
+    "shares": 80.0,
+    "cost": 20.0,
+    "p": 1.0,
+    "ev": 3.0,
+    "kelly": 0.25,
+    "forecast_temp": 17.2,
+    "forecast_src": "ecmwf",
+    "sigma": 1.2,
+    "opened_at": "2026-04-11T09:32:55.881874+00:00",
+    "status": "closed",
+    "pnl": 59.92,
+    "exit_price": 0.999,
+    "close_reason": "forecast_changed",
+    "closed_at": "2026-04-13T13:39:21.681703+00:00"
+  },
+  "actual_temp": null,
+  "resolved_outcome": null,
+  "pnl": null,
+  "forecast_snapshots": [
+    {
+      "ts": "2026-04-11T07:51:47.052958+00:00",
+      "horizon": "D+2",
+      "hours_left": 52.1,
+      "ecmwf": 16.9,
+      "hrrr": null,
+      "metar": null,
+      "best": 16.9,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T07:57:50.828316+00:00",
+      "horizon": "D+2",
+      "hours_left": 52.0,
+      "ecmwf": 16.9,
+      "hrrr": null,
+      "metar": null,
+      "best": 16.9,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T08:06:03.313561+00:00",
+      "horizon": "D+2",
+      "hours_left": 51.9,
+      "ecmwf": 16.9,
+      "hrrr": null,
+      "metar": null,
+      "best": 16.9,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T08:28:44.835482+00:00",
+      "horizon": "D+2",
+      "hours_left": 51.5,
+      "ecmwf": 17.2,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T09:32:55.881874+00:00",
+      "horizon": "D+2",
+      "hours_left": 50.5,
+      "ecmwf": 17.2,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T10:35:16.811992+00:00",
+      "horizon": "D+2",
+      "hours_left": 49.4,
+      "ecmwf": 17.2,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T11:37:34.965023+00:00",
+      "horizon": "D+2",
+      "hours_left": 48.4,
+      "ecmwf": 17.2,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T12:40:01.765490+00:00",
+      "horizon": "D+2",
+      "hours_left": 47.3,
+      "ecmwf": 17.2,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-11T13:42:08.609555+00:00",
+      "horizon": "D+2",
+      "hours_left": 46.3,
+      "ecmwf": 17.2,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T09:18:30.285685+00:00",
+      "horizon": "D+1",
+      "hours_left": 26.7,
+      "ecmwf": 17.4,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.4,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T10:22:22.378447+00:00",
+      "horizon": "D+1",
+      "hours_left": 25.6,
+      "ecmwf": 17.4,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.4,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T11:24:50.163569+00:00",
+      "horizon": "D+1",
+      "hours_left": 24.6,
+      "ecmwf": 17.4,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.4,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T12:26:47.284382+00:00",
+      "horizon": "D+1",
+      "hours_left": 23.6,
+      "ecmwf": 17.4,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.4,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T13:28:42.487988+00:00",
+      "horizon": "D+1",
+      "hours_left": 22.5,
+      "ecmwf": 17.4,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.4,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T14:30:53.448295+00:00",
+      "horizon": "D+1",
+      "hours_left": 21.5,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T15:32:58.753648+00:00",
+      "horizon": "D+1",
+      "hours_left": 20.4,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T16:34:53.201789+00:00",
+      "horizon": "D+1",
+      "hours_left": 19.4,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T17:36:52.089588+00:00",
+      "horizon": "D+1",
+      "hours_left": 18.4,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T18:39:02.733140+00:00",
+      "horizon": "D+1",
+      "hours_left": 17.3,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T19:41:03.549184+00:00",
+      "horizon": "D+1",
+      "hours_left": 16.3,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T20:42:55.975540+00:00",
+      "horizon": "D+1",
+      "hours_left": 15.3,
+      "ecmwf": 17.6,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.6,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T21:37:59.031317+00:00",
+      "horizon": "D+1",
+      "hours_left": 14.4,
+      "ecmwf": 17.6,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.6,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-12T22:05:12.856582+00:00",
+      "horizon": "D+1",
+      "hours_left": 13.9,
+      "ecmwf": 17.6,
+      "hrrr": null,
+      "metar": null,
+      "best": 17.6,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T06:15:46.403869+00:00",
+      "horizon": "D+0",
+      "hours_left": 5.7,
+      "ecmwf": 18.0,
+      "hrrr": null,
+      "metar": 17.0,
+      "best": 18.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T06:24:43.982135+00:00",
+      "horizon": "D+0",
+      "hours_left": 5.6,
+      "ecmwf": 18.0,
+      "hrrr": null,
+      "metar": 17.0,
+      "best": 18.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T07:18:06.916792+00:00",
+      "horizon": "D+0",
+      "hours_left": 4.7,
+      "ecmwf": 18.0,
+      "hrrr": null,
+      "metar": 16.0,
+      "best": 18.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T07:26:57.926654+00:00",
+      "horizon": "D+0",
+      "hours_left": 4.5,
+      "ecmwf": 18.0,
+      "hrrr": null,
+      "metar": 16.0,
+      "best": 18.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T08:20:13.217318+00:00",
+      "horizon": "D+0",
+      "hours_left": 3.7,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 16.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T08:29:00.791973+00:00",
+      "horizon": "D+0",
+      "hours_left": 3.5,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 16.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T09:22:15.542891+00:00",
+      "horizon": "D+0",
+      "hours_left": 2.6,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T09:31:16.002996+00:00",
+      "horizon": "D+0",
+      "hours_left": 2.5,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T10:24:12.585248+00:00",
+      "horizon": "D+0",
+      "hours_left": 1.6,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T10:33:18.599164+00:00",
+      "horizon": "D+0",
+      "hours_left": 1.4,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T11:26:09.341330+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.6,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T11:35:16.943254+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.4,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T12:28:08.821117+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T12:37:18.284926+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T13:30:23.476673+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T13:39:21.681703+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 18.2,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 18.2,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T14:32:31.168199+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T14:41:46.826853+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T15:34:26.338231+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T15:43:36.035272+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 17.5,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": 17.5,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T16:38:14.705461+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": null,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": null,
+      "best_source": null
+    },
+    {
+      "ts": "2026-04-13T16:50:19.232721+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": null,
+      "hrrr": null,
+      "metar": null,
+      "best": null,
+      "best_source": null
+    },
+    {
+      "ts": "2026-04-13T17:44:43.920256+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": null,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": null,
+      "best_source": null
+    },
+    {
+      "ts": "2026-04-13T18:00:17.212314+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": null,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": null,
+      "best_source": null
+    },
+    {
+      "ts": "2026-04-13T18:16:23.282269+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": null,
+      "hrrr": null,
+      "metar": 15.0,
+      "best": null,
+      "best_source": null
+    }
+  ],
+  "market_snapshots": [
+    {
+      "ts": "2026-04-11T07:51:47.052958+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.315
+    },
+    {
+      "ts": "2026-04-11T07:57:50.828316+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.315
+    },
+    {
+      "ts": "2026-04-11T08:06:03.313561+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.315
+    },
+    {
+      "ts": "2026-04-11T08:28:44.835482+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.315
+    },
+    {
+      "ts": "2026-04-11T09:32:55.881874+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.315
+    },
+    {
+      "ts": "2026-04-11T10:35:16.811992+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.305
+    },
+    {
+      "ts": "2026-04-11T11:37:34.965023+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.305
+    },
+    {
+      "ts": "2026-04-11T12:40:01.765490+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.305
+    },
+    {
+      "ts": "2026-04-11T13:42:08.609555+00:00",
+      "top_bucket": "20.0-999.0C",
+      "top_price": 0.305
+    },
+    {
+      "ts": "2026-04-12T09:18:30.285685+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.39
+    },
+    {
+      "ts": "2026-04-12T10:22:22.378447+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.375
+    },
+    {
+      "ts": "2026-04-12T11:24:50.163569+00:00",
+      "top_bucket": "19.0-19.0C",
+      "top_price": 0.37
+    },
+    {
+      "ts": "2026-04-12T12:26:47.284382+00:00",
+      "top_bucket": "19.0-19.0C",
+      "top_price": 0.335
+    },
+    {
+      "ts": "2026-04-12T13:28:42.487988+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.37
+    },
+    {
+      "ts": "2026-04-12T14:30:53.448295+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.385
+    },
+    {
+      "ts": "2026-04-12T15:32:58.753648+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.43
+    },
+    {
+      "ts": "2026-04-12T16:34:53.201789+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.425
+    },
+    {
+      "ts": "2026-04-12T17:36:52.089588+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.435
+    },
+    {
+      "ts": "2026-04-12T18:39:02.733140+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.435
+    },
+    {
+      "ts": "2026-04-12T19:41:03.549184+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.445
+    },
+    {
+      "ts": "2026-04-12T20:42:55.975540+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.45
+    },
+    {
+      "ts": "2026-04-12T21:37:59.031317+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.445
+    },
+    {
+      "ts": "2026-04-12T22:05:12.856582+00:00",
+      "top_bucket": "18.0-18.0C",
+      "top_price": 0.445
+    },
+    {
+      "ts": "2026-04-13T06:15:46.403869+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.8385
+    },
+    {
+      "ts": "2026-04-13T06:24:43.982135+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.83
+    },
+    {
+      "ts": "2026-04-13T07:18:06.916792+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.976
+    },
+    {
+      "ts": "2026-04-13T07:26:57.926654+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9675
+    },
+    {
+      "ts": "2026-04-13T08:20:13.217318+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.997
+    },
+    {
+      "ts": "2026-04-13T08:29:00.791973+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9955
+    },
+    {
+      "ts": "2026-04-13T09:22:15.542891+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9985
+    },
+    {
+      "ts": "2026-04-13T09:31:16.002996+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9985
+    },
+    {
+      "ts": "2026-04-13T10:24:12.585248+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9985
+    },
+    {
+      "ts": "2026-04-13T10:33:18.599164+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9985
+    },
+    {
+      "ts": "2026-04-13T11:26:09.341330+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9985
+    },
+    {
+      "ts": "2026-04-13T11:35:16.943254+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9985
+    },
+    {
+      "ts": "2026-04-13T12:28:08.821117+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.999
+    },
+    {
+      "ts": "2026-04-13T12:37:18.284926+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    },
+    {
+      "ts": "2026-04-13T13:30:23.476673+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9985
+    },
+    {
+      "ts": "2026-04-13T13:39:21.681703+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.999
+    },
+    {
+      "ts": "2026-04-13T14:32:31.168199+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.998
+    },
+    {
+      "ts": "2026-04-13T14:41:46.826853+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.998
+    },
+    {
+      "ts": "2026-04-13T15:34:26.338231+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    },
+    {
+      "ts": "2026-04-13T15:43:36.035272+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    },
+    {
+      "ts": "2026-04-13T16:38:14.705461+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    },
+    {
+      "ts": "2026-04-13T16:50:19.232721+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    },
+    {
+      "ts": "2026-04-13T17:44:43.920256+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    },
+    {
+      "ts": "2026-04-13T18:00:17.212314+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    },
+    {
+      "ts": "2026-04-13T18:16:23.282269+00:00",
+      "top_bucket": "17.0-17.0C",
+      "top_price": 0.9995
+    }
+  ],
+  "all_outcomes": [
+    {
+      "question": "Will the highest temperature in Shanghai be 10°C or below on April 13?",
+      "market_id": "1924546",
+      "range": [
+        -999.0,
+        10.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 6530.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 11°C on April 13?",
+      "market_id": "1924547",
+      "range": [
+        11.0,
+        11.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 5024.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 12°C on April 13?",
+      "market_id": "1924548",
+      "range": [
+        12.0,
+        12.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 6158.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 13°C on April 13?",
+      "market_id": "1924549",
+      "range": [
+        13.0,
+        13.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 9822.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 14°C on April 13?",
+      "market_id": "1924550",
+      "range": [
+        14.0,
+        14.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 16041.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 15°C on April 13?",
+      "market_id": "1924551",
+      "range": [
+        15.0,
+        15.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 43841.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 16°C on April 13?",
+      "market_id": "1924552",
+      "range": [
+        16.0,
+        16.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 125821.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 17°C on April 13?",
+      "market_id": "1924553",
+      "range": [
+        17.0,
+        17.0
+      ],
+      "bid": 0.9995,
+      "ask": 0.0005,
+      "price": 0.9995,
+      "spread": -0.999,
+      "volume": 52525.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 18°C on April 13?",
+      "market_id": "1924554",
+      "range": [
+        18.0,
+        18.0
+      ],
+      "bid": 0.0005,
+      "ask": 0.9995,
+      "price": 0.0005,
+      "spread": 0.999,
+      "volume": 54088.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 19°C on April 13?",
+      "market_id": "1924555",
+      "range": [
+        19.0,
+        19.0
+      ],
+      "bid": 0.0005,
+      "ask": 0.9995,
+      "price": 0.0005,
+      "spread": 0.999,
+      "volume": 33011.0
+    },
+    {
+      "question": "Will the highest temperature in Shanghai be 20°C or higher on April 13?",
+      "market_id": "1924556",
+      "range": [
+        20.0,
+        999.0
+      ],
+      "bid": 0.0005,
+      "ask": 0.9995,
+      "price": 0.0005,
+      "spread": 0.999,
+      "volume": 34267.0
+    }
+  ],
+  "created_at": "2026-04-11T07:52:01.482150+00:00"
+}

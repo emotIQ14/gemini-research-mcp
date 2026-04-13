@@ -1,0 +1,921 @@
+{
+  "city": "seattle",
+  "city_name": "Seattle",
+  "date": "2026-04-13",
+  "unit": "F",
+  "station": "KSEA",
+  "event_end_date": "2026-04-13T12:00:00Z",
+  "hours_at_discovery": 52.2,
+  "status": "closed",
+  "position": {
+    "market_id": "1924400",
+    "question": "Will the highest temperature in Seattle be between 50-51°F on April 13?",
+    "bucket_low": 50.0,
+    "bucket_high": 51.0,
+    "entry_price": 0.11,
+    "bid_at_entry": 0.08,
+    "spread": 0.03,
+    "shares": 181.82,
+    "cost": 20.0,
+    "p": 1.0,
+    "ev": 8.0909,
+    "kelly": 0.25,
+    "forecast_temp": 50,
+    "forecast_src": "hrrr",
+    "sigma": 2.0,
+    "opened_at": "2026-04-12T10:21:23.833119+00:00",
+    "status": "closed",
+    "pnl": -12.45,
+    "exit_price": 0.0415,
+    "close_reason": "forecast_changed",
+    "closed_at": "2026-04-13T14:41:14.060002+00:00"
+  },
+  "actual_temp": null,
+  "resolved_outcome": null,
+  "pnl": null,
+  "forecast_snapshots": [
+    {
+      "ts": "2026-04-11T07:47:08.569791+00:00",
+      "horizon": "D+2",
+      "hours_left": 52.2,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T07:48:56.874458+00:00",
+      "horizon": "D+2",
+      "hours_left": 52.2,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T07:55:15.579032+00:00",
+      "horizon": "D+2",
+      "hours_left": 52.1,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T08:03:10.852221+00:00",
+      "horizon": "D+2",
+      "hours_left": 51.9,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T08:27:25.174058+00:00",
+      "horizon": "D+2",
+      "hours_left": 51.5,
+      "ecmwf": 54,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T09:32:21.733047+00:00",
+      "horizon": "D+2",
+      "hours_left": 50.5,
+      "ecmwf": 54,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T10:34:43.488666+00:00",
+      "horizon": "D+2",
+      "hours_left": 49.4,
+      "ecmwf": 54,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T11:36:56.914525+00:00",
+      "horizon": "D+2",
+      "hours_left": 48.4,
+      "ecmwf": 54,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T12:39:24.819287+00:00",
+      "horizon": "D+2",
+      "hours_left": 47.3,
+      "ecmwf": 54,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-11T13:41:34.686788+00:00",
+      "horizon": "D+2",
+      "hours_left": 46.3,
+      "ecmwf": 54,
+      "hrrr": 51,
+      "metar": null,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T09:17:23.764186+00:00",
+      "horizon": "D+1",
+      "hours_left": 26.7,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T10:21:23.833119+00:00",
+      "horizon": "D+1",
+      "hours_left": 25.6,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T11:24:17.648166+00:00",
+      "horizon": "D+1",
+      "hours_left": 24.6,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T12:26:15.407020+00:00",
+      "horizon": "D+1",
+      "hours_left": 23.6,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T13:28:10.305245+00:00",
+      "horizon": "D+1",
+      "hours_left": 22.5,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T14:30:16.958954+00:00",
+      "horizon": "D+1",
+      "hours_left": 21.5,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T15:32:23.166189+00:00",
+      "horizon": "D+1",
+      "hours_left": 20.5,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T16:34:20.601857+00:00",
+      "horizon": "D+1",
+      "hours_left": 19.4,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T17:36:19.984765+00:00",
+      "horizon": "D+1",
+      "hours_left": 18.4,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T18:38:29.336029+00:00",
+      "horizon": "D+1",
+      "hours_left": 17.4,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T19:40:31.566245+00:00",
+      "horizon": "D+1",
+      "hours_left": 16.3,
+      "ecmwf": 53,
+      "hrrr": 50,
+      "metar": null,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T20:42:24.400885+00:00",
+      "horizon": "D+1",
+      "hours_left": 15.3,
+      "ecmwf": 54,
+      "hrrr": 52,
+      "metar": null,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T21:37:19.390309+00:00",
+      "horizon": "D+1",
+      "hours_left": 14.4,
+      "ecmwf": 54,
+      "hrrr": 52,
+      "metar": null,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-12T22:03:59.535105+00:00",
+      "horizon": "D+1",
+      "hours_left": 13.9,
+      "ecmwf": 54,
+      "hrrr": 52,
+      "metar": null,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T06:15:04.077478+00:00",
+      "horizon": "D+0",
+      "hours_left": 5.7,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": 49,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T06:24:09.467032+00:00",
+      "horizon": "D+0",
+      "hours_left": 5.6,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": 49,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T07:17:33.680995+00:00",
+      "horizon": "D+0",
+      "hours_left": 4.7,
+      "ecmwf": 55,
+      "hrrr": 50,
+      "metar": 48,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T07:26:24.227431+00:00",
+      "horizon": "D+0",
+      "hours_left": 4.6,
+      "ecmwf": 55,
+      "hrrr": 50,
+      "metar": 48,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T08:19:37.293366+00:00",
+      "horizon": "D+0",
+      "hours_left": 3.7,
+      "ecmwf": 55,
+      "hrrr": 50,
+      "metar": 48,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T08:28:27.388805+00:00",
+      "horizon": "D+0",
+      "hours_left": 3.5,
+      "ecmwf": 55,
+      "hrrr": 50,
+      "metar": 48,
+      "best": 50,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T09:21:40.420614+00:00",
+      "horizon": "D+0",
+      "hours_left": 2.6,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": 49,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T09:30:37.130225+00:00",
+      "horizon": "D+0",
+      "hours_left": 2.5,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": 49,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T10:23:40.122296+00:00",
+      "horizon": "D+0",
+      "hours_left": 1.6,
+      "ecmwf": 55,
+      "hrrr": 51,
+      "metar": 48,
+      "best": 51,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T10:32:44.878631+00:00",
+      "horizon": "D+0",
+      "hours_left": 1.5,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 48,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T11:25:36.646924+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.6,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 48,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T11:34:42.214485+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.4,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 48,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T12:27:31.852442+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 48,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T12:36:44.200165+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 48,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T13:29:37.151584+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 54,
+      "metar": 47,
+      "best": 54,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T13:38:45.598680+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 54,
+      "metar": 47,
+      "best": 54,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T14:31:55.246073+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 54,
+      "metar": 47,
+      "best": 54,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T14:41:14.060002+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 54,
+      "metar": 47,
+      "best": 54,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T15:33:50.493308+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 53,
+      "metar": 48,
+      "best": 53,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T15:43:02.489913+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 53,
+      "metar": 48,
+      "best": 53,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T16:36:40.807516+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 53,
+      "metar": 48,
+      "best": 53,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T16:47:44.944544+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 53,
+      "metar": 48,
+      "best": 53,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T17:43:35.505521+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 50,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T17:59:05.403173+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 51,
+      "best": 52,
+      "best_source": "hrrr"
+    },
+    {
+      "ts": "2026-04-13T18:15:01.066620+00:00",
+      "horizon": "D+0",
+      "hours_left": 0.0,
+      "ecmwf": 55,
+      "hrrr": 52,
+      "metar": 51,
+      "best": 52,
+      "best_source": "hrrr"
+    }
+  ],
+  "market_snapshots": [
+    {
+      "ts": "2026-04-11T07:47:08.569791+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.29
+    },
+    {
+      "ts": "2026-04-11T07:48:56.874458+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.29
+    },
+    {
+      "ts": "2026-04-11T07:55:15.579032+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.295
+    },
+    {
+      "ts": "2026-04-11T08:03:10.852221+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.305
+    },
+    {
+      "ts": "2026-04-11T08:27:25.174058+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.325
+    },
+    {
+      "ts": "2026-04-11T09:32:21.733047+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.3
+    },
+    {
+      "ts": "2026-04-11T10:34:43.488666+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.4
+    },
+    {
+      "ts": "2026-04-11T11:36:56.914525+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.455
+    },
+    {
+      "ts": "2026-04-11T12:39:24.819287+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.43
+    },
+    {
+      "ts": "2026-04-11T13:41:34.686788+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.4
+    },
+    {
+      "ts": "2026-04-12T09:17:23.764186+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.355
+    },
+    {
+      "ts": "2026-04-12T10:21:23.833119+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.37
+    },
+    {
+      "ts": "2026-04-12T11:24:17.648166+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.37
+    },
+    {
+      "ts": "2026-04-12T12:26:15.407020+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.385
+    },
+    {
+      "ts": "2026-04-12T13:28:10.305245+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.385
+    },
+    {
+      "ts": "2026-04-12T14:30:16.958954+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.395
+    },
+    {
+      "ts": "2026-04-12T15:32:23.166189+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.42
+    },
+    {
+      "ts": "2026-04-12T16:34:20.601857+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.415
+    },
+    {
+      "ts": "2026-04-12T17:36:19.984765+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.425
+    },
+    {
+      "ts": "2026-04-12T18:38:29.336029+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.425
+    },
+    {
+      "ts": "2026-04-12T19:40:31.566245+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.47
+    },
+    {
+      "ts": "2026-04-12T20:42:24.400885+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.455
+    },
+    {
+      "ts": "2026-04-12T21:37:19.390309+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.465
+    },
+    {
+      "ts": "2026-04-12T22:03:59.535105+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.465
+    },
+    {
+      "ts": "2026-04-13T06:15:04.077478+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.43
+    },
+    {
+      "ts": "2026-04-13T06:24:09.467032+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.435
+    },
+    {
+      "ts": "2026-04-13T07:17:33.680995+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.47
+    },
+    {
+      "ts": "2026-04-13T07:26:24.227431+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.46
+    },
+    {
+      "ts": "2026-04-13T08:19:37.293366+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.475
+    },
+    {
+      "ts": "2026-04-13T08:28:27.388805+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.48
+    },
+    {
+      "ts": "2026-04-13T09:21:40.420614+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.495
+    },
+    {
+      "ts": "2026-04-13T09:30:37.130225+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.465
+    },
+    {
+      "ts": "2026-04-13T10:23:40.122296+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.475
+    },
+    {
+      "ts": "2026-04-13T10:32:44.878631+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.48
+    },
+    {
+      "ts": "2026-04-13T11:25:36.646924+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.41
+    },
+    {
+      "ts": "2026-04-13T11:34:42.214485+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.415
+    },
+    {
+      "ts": "2026-04-13T12:27:31.852442+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.47
+    },
+    {
+      "ts": "2026-04-13T12:36:44.200165+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.46
+    },
+    {
+      "ts": "2026-04-13T13:29:37.151584+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.36
+    },
+    {
+      "ts": "2026-04-13T13:38:45.598680+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.435
+    },
+    {
+      "ts": "2026-04-13T14:31:55.246073+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.455
+    },
+    {
+      "ts": "2026-04-13T14:41:14.060002+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.465
+    },
+    {
+      "ts": "2026-04-13T15:33:50.493308+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.51
+    },
+    {
+      "ts": "2026-04-13T15:43:02.489913+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.48
+    },
+    {
+      "ts": "2026-04-13T16:36:40.807516+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.52
+    },
+    {
+      "ts": "2026-04-13T16:47:44.944544+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.525
+    },
+    {
+      "ts": "2026-04-13T17:43:35.505521+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.52
+    },
+    {
+      "ts": "2026-04-13T17:59:05.403173+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.59
+    },
+    {
+      "ts": "2026-04-13T18:15:01.066620+00:00",
+      "top_bucket": "54.0-55.0F",
+      "top_price": 0.62
+    }
+  ],
+  "all_outcomes": [
+    {
+      "question": "Will the highest temperature in Seattle be 45°F or below on April 13?",
+      "market_id": "1924397",
+      "range": [
+        -999.0,
+        45.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 11054.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 46-47°F on April 13?",
+      "market_id": "1924398",
+      "range": [
+        46.0,
+        47.0
+      ],
+      "bid": 0.0,
+      "ask": 1.0,
+      "price": 0.0,
+      "spread": 1.0,
+      "volume": 1252.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 48-49°F on April 13?",
+      "market_id": "1924399",
+      "range": [
+        48.0,
+        49.0
+      ],
+      "bid": 0.0005,
+      "ask": 0.9995,
+      "price": 0.0005,
+      "spread": 0.999,
+      "volume": 5263.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 50-51°F on April 13?",
+      "market_id": "1924400",
+      "range": [
+        50.0,
+        51.0
+      ],
+      "bid": 0.035,
+      "ask": 0.965,
+      "price": 0.035,
+      "spread": 0.93,
+      "volume": 10410.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 52-53°F on April 13?",
+      "market_id": "1924401",
+      "range": [
+        52.0,
+        53.0
+      ],
+      "bid": 0.27,
+      "ask": 0.73,
+      "price": 0.27,
+      "spread": 0.46,
+      "volume": 5140.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 54-55°F on April 13?",
+      "market_id": "1924402",
+      "range": [
+        54.0,
+        55.0
+      ],
+      "bid": 0.62,
+      "ask": 0.38,
+      "price": 0.62,
+      "spread": -0.24,
+      "volume": 6399.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 56-57°F on April 13?",
+      "market_id": "1924403",
+      "range": [
+        56.0,
+        57.0
+      ],
+      "bid": 0.135,
+      "ask": 0.865,
+      "price": 0.135,
+      "spread": 0.73,
+      "volume": 5123.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 58-59°F on April 13?",
+      "market_id": "1924404",
+      "range": [
+        58.0,
+        59.0
+      ],
+      "bid": 0.0195,
+      "ask": 0.9805,
+      "price": 0.0195,
+      "spread": 0.961,
+      "volume": 5154.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 60-61°F on April 13?",
+      "market_id": "1924405",
+      "range": [
+        60.0,
+        61.0
+      ],
+      "bid": 0.0035,
+      "ask": 0.9965,
+      "price": 0.0035,
+      "spread": 0.993,
+      "volume": 3313.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be between 62-63°F on April 13?",
+      "market_id": "1924406",
+      "range": [
+        62.0,
+        63.0
+      ],
+      "bid": 0.002,
+      "ask": 0.998,
+      "price": 0.002,
+      "spread": 0.996,
+      "volume": 2619.0
+    },
+    {
+      "question": "Will the highest temperature in Seattle be 64°F or higher on April 13?",
+      "market_id": "1924407",
+      "range": [
+        64.0,
+        999.0
+      ],
+      "bid": 0.0005,
+      "ask": 0.9995,
+      "price": 0.0005,
+      "spread": 0.999,
+      "volume": 2073.0
+    }
+  ],
+  "created_at": "2026-04-11T07:47:23.483674+00:00"
+}

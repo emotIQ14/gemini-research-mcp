@@ -1,0 +1,561 @@
+{
+  "city": "lucknow",
+  "city_name": "Lucknow",
+  "date": "2026-04-15",
+  "unit": "C",
+  "station": "VILK",
+  "event_end_date": "2026-04-15T12:00:00Z",
+  "hours_at_discovery": 53.7,
+  "status": "open",
+  "position": {
+    "market_id": "1965384",
+    "question": "Will the highest temperature in Lucknow be 40°C on April 15?",
+    "bucket_low": 40.0,
+    "bucket_high": 40.0,
+    "entry_price": 0.38,
+    "bid_at_entry": 0.37,
+    "spread": 0.01,
+    "shares": 52.63,
+    "cost": 20.0,
+    "p": 1.0,
+    "ev": 1.6316,
+    "kelly": 0.25,
+    "forecast_temp": 40.0,
+    "forecast_src": "ecmwf",
+    "sigma": 1.2,
+    "opened_at": "2026-04-13T18:16:43.798074+00:00",
+    "status": "open",
+    "pnl": null,
+    "exit_price": null,
+    "close_reason": null,
+    "closed_at": null
+  },
+  "actual_temp": null,
+  "resolved_outcome": null,
+  "pnl": null,
+  "forecast_snapshots": [
+    {
+      "ts": "2026-04-13T06:15:57.731389+00:00",
+      "horizon": "D+2",
+      "hours_left": 53.7,
+      "ecmwf": 40.1,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.1,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T06:24:52.264558+00:00",
+      "horizon": "D+2",
+      "hours_left": 53.6,
+      "ecmwf": 40.1,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.1,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T07:18:14.855475+00:00",
+      "horizon": "D+2",
+      "hours_left": 52.7,
+      "ecmwf": 40.1,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.1,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T07:27:05.879025+00:00",
+      "horizon": "D+2",
+      "hours_left": 52.5,
+      "ecmwf": 40.1,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.1,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T08:20:21.679022+00:00",
+      "horizon": "D+2",
+      "hours_left": 51.7,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T08:29:09.048839+00:00",
+      "horizon": "D+2",
+      "hours_left": 51.5,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T09:22:24.069665+00:00",
+      "horizon": "D+2",
+      "hours_left": 50.6,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T09:31:27.545931+00:00",
+      "horizon": "D+2",
+      "hours_left": 50.5,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T10:24:20.236373+00:00",
+      "horizon": "D+2",
+      "hours_left": 49.6,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T10:33:26.706339+00:00",
+      "horizon": "D+2",
+      "hours_left": 49.4,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T11:26:17.638861+00:00",
+      "horizon": "D+2",
+      "hours_left": 48.6,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T11:35:25.076103+00:00",
+      "horizon": "D+2",
+      "hours_left": 48.4,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T12:28:18.448926+00:00",
+      "horizon": "D+2",
+      "hours_left": 47.5,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T12:37:27.458605+00:00",
+      "horizon": "D+2",
+      "hours_left": 47.4,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T13:30:36.567040+00:00",
+      "horizon": "D+2",
+      "hours_left": 46.5,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T13:39:33.083663+00:00",
+      "horizon": "D+2",
+      "hours_left": 46.3,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T14:32:39.645041+00:00",
+      "horizon": "D+2",
+      "hours_left": 45.5,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T14:41:55.734523+00:00",
+      "horizon": "D+2",
+      "hours_left": 45.3,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T15:34:34.726538+00:00",
+      "horizon": "D+2",
+      "hours_left": 44.4,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T15:43:44.114146+00:00",
+      "horizon": "D+2",
+      "hours_left": 44.3,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T16:38:33.772662+00:00",
+      "horizon": "D+2",
+      "hours_left": 43.4,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T16:52:04.475120+00:00",
+      "horizon": "D+2",
+      "hours_left": 43.1,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T17:45:00.073356+00:00",
+      "horizon": "D+2",
+      "hours_left": 42.2,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T18:00:34.217883+00:00",
+      "horizon": "D+2",
+      "hours_left": 42.0,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    },
+    {
+      "ts": "2026-04-13T18:16:43.798074+00:00",
+      "horizon": "D+2",
+      "hours_left": 41.7,
+      "ecmwf": 40.0,
+      "hrrr": null,
+      "metar": null,
+      "best": 40.0,
+      "best_source": "ecmwf"
+    }
+  ],
+  "market_snapshots": [
+    {
+      "ts": "2026-04-13T06:15:57.731389+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.285
+    },
+    {
+      "ts": "2026-04-13T06:24:52.264558+00:00",
+      "top_bucket": "40.0-40.0C",
+      "top_price": 0.295
+    },
+    {
+      "ts": "2026-04-13T07:18:14.855475+00:00",
+      "top_bucket": "41.0-41.0C",
+      "top_price": 0.29
+    },
+    {
+      "ts": "2026-04-13T07:27:05.879025+00:00",
+      "top_bucket": "40.0-40.0C",
+      "top_price": 0.3
+    },
+    {
+      "ts": "2026-04-13T08:20:21.679022+00:00",
+      "top_bucket": "40.0-40.0C",
+      "top_price": 0.3
+    },
+    {
+      "ts": "2026-04-13T08:29:09.048839+00:00",
+      "top_bucket": "40.0-40.0C",
+      "top_price": 0.355
+    },
+    {
+      "ts": "2026-04-13T09:22:24.069665+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.375
+    },
+    {
+      "ts": "2026-04-13T09:31:27.545931+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.38
+    },
+    {
+      "ts": "2026-04-13T10:24:20.236373+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.395
+    },
+    {
+      "ts": "2026-04-13T10:33:26.706339+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.395
+    },
+    {
+      "ts": "2026-04-13T11:26:17.638861+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.415
+    },
+    {
+      "ts": "2026-04-13T11:35:25.076103+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.42
+    },
+    {
+      "ts": "2026-04-13T12:28:18.448926+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.425
+    },
+    {
+      "ts": "2026-04-13T12:37:27.458605+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.43
+    },
+    {
+      "ts": "2026-04-13T13:30:36.567040+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.415
+    },
+    {
+      "ts": "2026-04-13T13:39:33.083663+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.42
+    },
+    {
+      "ts": "2026-04-13T14:32:39.645041+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.42
+    },
+    {
+      "ts": "2026-04-13T14:41:55.734523+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.42
+    },
+    {
+      "ts": "2026-04-13T15:34:34.726538+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.425
+    },
+    {
+      "ts": "2026-04-13T15:43:44.114146+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.425
+    },
+    {
+      "ts": "2026-04-13T16:38:33.772662+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.425
+    },
+    {
+      "ts": "2026-04-13T16:52:04.475120+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.42
+    },
+    {
+      "ts": "2026-04-13T17:45:00.073356+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.41
+    },
+    {
+      "ts": "2026-04-13T18:00:34.217883+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.42
+    },
+    {
+      "ts": "2026-04-13T18:16:43.798074+00:00",
+      "top_bucket": "39.0-39.0C",
+      "top_price": 0.405
+    }
+  ],
+  "all_outcomes": [
+    {
+      "question": "Will the highest temperature in Lucknow be 37°C or below on April 15?",
+      "market_id": "1965381",
+      "range": [
+        -999.0,
+        37.0
+      ],
+      "bid": 0.0445,
+      "ask": 0.9555,
+      "price": 0.0445,
+      "spread": 0.911,
+      "volume": 672.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 38°C on April 15?",
+      "market_id": "1965382",
+      "range": [
+        38.0,
+        38.0
+      ],
+      "bid": 0.09,
+      "ask": 0.91,
+      "price": 0.09,
+      "spread": 0.82,
+      "volume": 1110.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 39°C on April 15?",
+      "market_id": "1965383",
+      "range": [
+        39.0,
+        39.0
+      ],
+      "bid": 0.405,
+      "ask": 0.595,
+      "price": 0.405,
+      "spread": 0.19,
+      "volume": 542.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 40°C on April 15?",
+      "market_id": "1965384",
+      "range": [
+        40.0,
+        40.0
+      ],
+      "bid": 0.385,
+      "ask": 0.615,
+      "price": 0.385,
+      "spread": 0.23,
+      "volume": 510.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 41°C on April 15?",
+      "market_id": "1965385",
+      "range": [
+        41.0,
+        41.0
+      ],
+      "bid": 0.095,
+      "ask": 0.905,
+      "price": 0.095,
+      "spread": 0.81,
+      "volume": 528.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 42°C on April 15?",
+      "market_id": "1965386",
+      "range": [
+        42.0,
+        42.0
+      ],
+      "bid": 0.0415,
+      "ask": 0.9585,
+      "price": 0.0415,
+      "spread": 0.917,
+      "volume": 619.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 43°C on April 15?",
+      "market_id": "1965387",
+      "range": [
+        43.0,
+        43.0
+      ],
+      "bid": 0.0095,
+      "ask": 0.9905,
+      "price": 0.0095,
+      "spread": 0.981,
+      "volume": 236.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 44°C on April 15?",
+      "market_id": "1965388",
+      "range": [
+        44.0,
+        44.0
+      ],
+      "bid": 0.0065,
+      "ask": 0.9935,
+      "price": 0.0065,
+      "spread": 0.987,
+      "volume": 847.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 45°C on April 15?",
+      "market_id": "1965389",
+      "range": [
+        45.0,
+        45.0
+      ],
+      "bid": 0.0035,
+      "ask": 0.9965,
+      "price": 0.0035,
+      "spread": 0.993,
+      "volume": 341.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 46°C on April 15?",
+      "market_id": "1965390",
+      "range": [
+        46.0,
+        46.0
+      ],
+      "bid": 0.0035,
+      "ask": 0.9965,
+      "price": 0.0035,
+      "spread": 0.993,
+      "volume": 344.0
+    },
+    {
+      "question": "Will the highest temperature in Lucknow be 47°C or higher on April 15?",
+      "market_id": "1965391",
+      "range": [
+        47.0,
+        999.0
+      ],
+      "bid": 0.0015,
+      "ask": 0.9985,
+      "price": 0.0015,
+      "spread": 0.997,
+      "volume": 3705.0
+    }
+  ],
+  "created_at": "2026-04-13T06:16:01.439551+00:00"
+}
