@@ -761,10 +761,22 @@ def scan_and_update():
             # --- OPEN POSITION ---
             if not mkt.get("position") and forecast_temp is not None and hours >= MIN_HOURS:
                 # Use adaptive best source if available, else fall back to best_source from forecasts
-                _adp_src = load_adaptive().get("best_source", {})
+                _adp      = load_adaptive()
+                _adp_src  = _adp.get("best_source", {})
+                _ev_mult  = _adp.get("ev_mult", {}).get(city_slug, 1.0)
+                _size_mult = _adp.get("size_mult", {}).get(city_slug, 1.0)
+                _blacklist = set(_adp.get("blacklist", []))
                 effective_source = _adp_src.get(city_slug) or best_source or "ecmwf"
                 sigma = get_sigma(city_slug, effective_source)
                 best_signal = None
+
+                # ── BLACKLIST: ciudades con PnL crítico acumulado quedan pausadas.
+                # Re-activadas automáticamente cuando learning detecte recuperación.
+                if city_slug in _blacklist:
+                    # No abrir nuevas posiciones en ciudades blacklisted
+                    save_market(mkt)
+                    time.sleep(0.1)
+                    continue
 
                 # Find exactly ONE bucket that matches the forecast
                 # If forecast doesn't fit any bucket cleanly — skip this market
@@ -784,8 +796,8 @@ def scan_and_update():
                     spread = o.get("spread", 0)
 
                     # Load adaptive params (updated each cycle by run_learning)
-                    _adp       = load_adaptive()
-                    eff_min_ev = _adp.get("min_ev") or MIN_EV
+                    # Per-city ev_multiplier → sube el umbral en ciudades volátiles
+                    eff_min_ev = (_adp.get("min_ev") or MIN_EV) * _ev_mult
                     kelly_scale = _adp.get("kelly_scale", {}).get(city_slug, 1.0)
 
                     # All filters — if any fails, skip this market entirely
@@ -795,6 +807,8 @@ def scan_and_update():
                         if ev >= eff_min_ev:
                             kelly = round(calc_kelly(p, ask) * kelly_scale, 4)
                             size  = bet_size(kelly, balance)
+                            # Aplicar size_multiplier por ciudad (volátiles → más pequeño)
+                            size  = round(size * _size_mult, 2)
                             if size >= 0.50:
                                 # ── HIGH CONFIDENCE check ─────────────────────
                                 # Ensemble agrees AND market price is lagging
