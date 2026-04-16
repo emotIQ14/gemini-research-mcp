@@ -86,20 +86,30 @@ def notify_start(n_cities: int, balance: float, scan_min: int):
 
 
 def notify_buy(city_name: str, date: str, bucket: str, entry: float,
-               ev: float, cost: float, src: str, horizon: str):
+               ev: float, cost: float, src: str, horizon: str,
+               high_conf: bool = False, ensemble_agree: float = None,
+               market_lag: float = None):
     url = f"https://polymarket.com/event/highest-temperature-in-{city_name.lower().replace(' ', '-')}-on-{date}"
+    hc_badge = "⚡ " if high_conf else ""
+    hc_line  = ""
+    if high_conf and ensemble_agree is not None:
+        hc_line = (
+            f"\n⚡ *Alta confianza* — acuerdo {ensemble_agree:.0%}"
+            + (f" | ventaja {market_lag:+.0%}" if market_lag is not None else "")
+        )
     msg = (
-        f"📈 *BUY — {city_name}*\n"
+        f"{hc_badge}📈 *BUY — {city_name}*\n"
         f"📅 {date} ({horizon}) | Bucket: `{bucket}`\n"
         f"💵 Entry: ${entry:.3f} | Cost: ${cost:.2f}\n"
-        f"📊 EV: {ev:+.2f} | Src: {src.upper()}\n"
+        f"📊 EV: {ev:+.2f} | Src: {src.upper()}"
+        f"{hc_line}\n"
         f"🔗 [Ver en Polymarket]({url})\n"
         f"🕐 _{_ts()}_"
     )
     _send(msg)
     _notion_append([
         _notion_bullet(
-            f"📈 BUY {city_name} {date} {bucket} | entry ${entry:.3f} | EV {ev:+.2f} | {src.upper()}",
+            f"{'⚡ ' if high_conf else ''}📈 BUY {city_name} {date} {bucket} | entry ${entry:.3f} | EV {ev:+.2f} | {src.upper()}",
             url,
         )
     ])

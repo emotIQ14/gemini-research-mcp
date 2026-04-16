@@ -10,5 +10,11 @@
   "scan_interval": 3600,
   "calibration_min": 30,
   "vc_key": "YOUR_KEY_HERE",
-  "max_slippage": 0.03
+  "max_slippage": 0.03,
+
+  "_hc_comment": "High-confidence ensemble: triggered when 4-5 global models agree tightly AND Polymarket price is lagging",
+  "high_conf_max_bet": 15.0,
+  "high_conf_agreement": 0.70,
+  "high_conf_min_market_lag": 0.10,
+  "high_conf_min_prob": 0.55
 }

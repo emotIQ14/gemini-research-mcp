@@ -37,14 +37,15 @@ from py_clob_client.clob_types import OrderArgs, BalanceAllowanceParams
 from py_clob_client.constants import POLYGON
 
 # ── Config ────────────────────────────────────────────────────────────────────
-PRIVATE_KEY    = os.environ["POLY_PRIVATE_KEY"]
-MAX_BET        = float(os.getenv("BRIDGE_MAX_BET", "5.0"))
-POLL_INTERVAL  = int(os.getenv("BRIDGE_POLL_SECONDS", "60"))
-TELEGRAM_TOKEN  = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_TOKEN2 = os.getenv("TELEGRAM_BOT_TOKEN_2", "")
-TELEGRAM_CHAT   = os.getenv("TELEGRAM_CHAT_ID", "")
-MIN_SHARES     = 5.0    # mínimo en shares
-MIN_COST_USD   = 1.0    # mínimo en USD (Polymarket exige >= $1 por orden marketable)
+PRIVATE_KEY       = os.environ["POLY_PRIVATE_KEY"]
+MAX_BET           = float(os.getenv("BRIDGE_MAX_BET", "5.0"))
+HIGH_CONF_MAX_BET = float(os.getenv("BRIDGE_HC_MAX_BET", "15.0"))  # for ⚡HC trades
+POLL_INTERVAL     = int(os.getenv("BRIDGE_POLL_SECONDS", "60"))
+TELEGRAM_TOKEN    = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_TOKEN2   = os.getenv("TELEGRAM_BOT_TOKEN_2", "")
+TELEGRAM_CHAT     = os.getenv("TELEGRAM_CHAT_ID", "")
+MIN_SHARES        = 5.0    # mínimo en shares
+MIN_COST_USD      = 1.0    # mínimo en USD (Polymarket exige >= $1 por orden marketable)
 
 WEATHERBOT_DIR = Path(__file__).parent.parent / "weatherbot"
 MARKETS_DIR    = WEATHERBOT_DIR / "data" / "markets"
@@ -506,14 +507,30 @@ async def run_bridge():
                 save_bridge_state(bridge)
                 continue
 
-            size_by_budget = round(MAX_BET / price, 2)
-            size = max(size_by_budget, MIN_SHARES)
-            cost = size * price
-            if cost > MAX_BET:
-                size = MIN_SHARES
+            # ── High-Confidence budget ──────────────────────────────────────
+            # The bot marks pos["high_conf"]=True when ≥4 global models agree
+            # tightly AND the Polymarket price is lagging our forecast.
+            # In that case we use HIGH_CONF_MAX_BET instead of MAX_BET.
+            is_high_conf  = bool(pos.get("high_conf"))
+            effective_max = HIGH_CONF_MAX_BET if is_high_conf else MAX_BET
+            hc_label      = " ⚡HC" if is_high_conf else ""
+
+            # Use weatherbot's pre-calculated cost if available and within budget
+            bot_cost = pos.get("cost", 0)
+            if bot_cost and bot_cost <= effective_max:
+                # Bot already factored Kelly + HC budget → trust it
+                size = round(bot_cost / price, 2)
+                size = max(size, MIN_SHARES)
+                cost = round(size * price, 4)
+            else:
+                size_by_budget = round(effective_max / price, 2)
+                size = max(size_by_budget, MIN_SHARES)
                 cost = size * price
-            size = round(size, 2)
-            cost = round(size * price, 4)
+                if cost > effective_max:
+                    size = MIN_SHARES
+                    cost = size * price
+                size = round(size, 2)
+                cost = round(size * price, 4)
 
             # Polymarket exige >= $1 de coste total por orden
             if cost < MIN_COST_USD:
@@ -521,7 +538,13 @@ async def run_bridge():
                 size = max(needed, MIN_SHARES)
                 cost = round(size * price, 4)
 
-            print(f"[{_ts()}] BUY {city} {date} {bucket} | ${price:.3f} x {size} | EV {ev:+.2f}")
+            ens_agree = pos.get("ensemble_agree")
+            mkt_lag   = pos.get("market_lag")
+            hc_detail = (
+                f" | acuerdo={ens_agree:.2f} lag={mkt_lag:+.2f}"
+                if is_high_conf and ens_agree is not None else ""
+            )
+            print(f"[{_ts()}] BUY{hc_label} {city} {date} {bucket} | ${price:.3f} x {size} | EV {ev:+.2f}{hc_detail}")
             print(f"  token: {clob_token[:25]}...")
 
             try:
@@ -539,21 +562,30 @@ async def run_bridge():
 
                 if success:
                     bridge["placed_orders"][market_id] = {
-                        "order_id": order_id or "placed",
+                        "order_id":   order_id or "placed",
                         "clob_token": clob_token,
-                        "size": size,
-                        "price": price,
+                        "size":       size,
+                        "price":      price,
+                        "high_conf":  is_high_conf,
                     }
                     save_bridge_state(bridge)
                     print(f"  OK order_id={order_id}")
                     cost_usd = round(size * price, 2)
+
+                    hc_line = ""
+                    if is_high_conf and ens_agree is not None:
+                        hc_line = (
+                            f"\n⚡ *Alta confianza* — {pos.get('ensemble_models', '?')} modelos de acuerdo\n"
+                            f"*Acuerdo:* {ens_agree:.0%} | *Ventaja:* {mkt_lag:+.0%}"
+                        )
                     _tg(
-                        f"*Compra ejecutada*\n\n"
+                        f"{'⚡ ' if is_high_conf else ''}*Compra ejecutada{hc_label}*\n\n"
                         f"*Mercado:* {city} — {date}\n"
                         f"*Rango apostado:* {bucket}\n"
                         f"*Precio de entrada:* ${price:.3f}\n"
                         f"*Cantidad:* {size} shares (${cost_usd:.2f} invertidos)\n"
-                        f"*Valor esperado:* {ev:+.2f}\n\n"
+                        f"*Valor esperado:* {ev:+.2f}"
+                        f"{hc_line}\n\n"
                         f"_{_ts()}_"
                     )
                 else:

@@ -17,6 +17,8 @@ import sys
 import json
 import math
 import time
+import statistics
+import os
 import requests
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -60,6 +62,22 @@ VC_KEY           = _cfg.get("vc_key", "")
 
 SIGMA_F = 2.0
 SIGMA_C = 1.2
+
+# ── High-Confidence Ensemble Betting ──────────────────────────────────────────
+# When 4-5 global models agree tightly AND Polymarket hasn't repriced yet
+# → bet more budget to capture the edge before the market catches up
+HIGH_CONF_MAX_BET        = _cfg.get("high_conf_max_bet", 15.0)          # max bet for HC trades
+HIGH_CONF_AGREEMENT      = _cfg.get("high_conf_agreement", 0.70)         # min inter-model agreement
+HIGH_CONF_MIN_MARKET_LAG = _cfg.get("high_conf_min_market_lag", 0.10)   # min p−price gap
+HIGH_CONF_MIN_PROB       = _cfg.get("high_conf_min_prob", 0.55)          # min ensemble probability
+
+# Open-Meteo multi-model ensemble (all free, no API key needed)
+ENSEMBLE_MODELS_C = ["ecmwf_ifs025", "gfs_seamless", "icon_seamless", "gem_seamless", "arpege_world"]
+ENSEMBLE_MODELS_F = ["ecmwf_ifs025", "gfs_seamless", "icon_seamless", "gem_seamless"]
+
+# Optional: OpenWeatherMap key (from Weather-MCP-ClaudeDesktop or weatherbot env)
+_OWM_KEY = (os.getenv("OPENWEATHER_API_KEY", "") or "").strip()
+_OWM_KEY = None if _OWM_KEY in ("", "your_api_key_here") else _OWM_KEY
 
 DATA_DIR         = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -243,6 +261,111 @@ def get_hrrr(city_slug, dates):
             else:
                 print(f"  [HRRR] {city_slug}: {e}")
     return result
+
+def get_ensemble_forecast(city_slug, dates):
+    """Fetch multi-model ensemble via Open-Meteo (5 models, no API key).
+
+    Returns per-date dict:
+        mean        — weighted ensemble mean (°C or °F)
+        spread      — inter-model std dev (lower = more agreement)
+        agreement   — 0‥1 score (1 = perfect consensus)
+        high_conf   — True when agreement ≥ HIGH_CONF_AGREEMENT with ≥3 models
+        n_models    — how many models returned data for this date
+        models      — {model_name: temp}
+    """
+    loc      = LOCATIONS[city_slug]
+    unit     = loc["unit"]
+    temp_unit = "fahrenheit" if unit == "F" else "celsius"
+    models   = ENSEMBLE_MODELS_F if unit == "F" else ENSEMBLE_MODELS_C
+    result   = {}
+    try:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={loc['lat']}&longitude={loc['lon']}"
+            f"&daily=temperature_2m_max&temperature_unit={temp_unit}"
+            f"&forecast_days=7&timezone={TIMEZONES.get(city_slug, 'UTC')}"
+            f"&models={','.join(models)}"
+        )
+        data = requests.get(url, timeout=(5, 12)).json()
+        if "error" in data:
+            return {}
+        daily     = data.get("daily", {})
+        date_list = daily.get("time", [])
+
+        for i, date in enumerate(date_list):
+            if date not in dates:
+                continue
+            model_temps = {}
+            for model in models:
+                key = f"temperature_2m_max_{model}"
+                vals = daily.get(key, [])
+                if i < len(vals) and vals[i] is not None:
+                    t = round(vals[i]) if unit == "F" else round(vals[i], 1)
+                    model_temps[model] = t
+
+            if len(model_temps) < 2:
+                continue
+
+            temps  = list(model_temps.values())
+            mean   = round(statistics.mean(temps), 0 if unit == "F" else 1)
+            spread = round(statistics.stdev(temps), 2) if len(temps) > 1 else 0.0
+            # Agreement thresholds calibrated to forecast skill per unit
+            # Celsius bucket ~1°C wide → HC if spread < 1.5°C
+            # Fahrenheit bucket ~2°F wide → HC if spread < 3.0°F
+            threshold  = 1.5 if unit == "C" else 3.0
+            agreement  = round(max(0.0, 1.0 - spread / threshold), 3)
+            high_conf  = agreement >= HIGH_CONF_AGREEMENT and len(model_temps) >= 3
+
+            result[date] = {
+                "mean":      mean,
+                "spread":    spread,
+                "agreement": agreement,
+                "high_conf": high_conf,
+                "n_models":  len(model_temps),
+                "models":    model_temps,
+            }
+    except Exception as e:
+        print(f"  [ENSEMBLE] {city_slug}: {e}")
+    return result
+
+
+def get_openweathermap_forecast(city_slug, dates):
+    """OpenWeatherMap 5-day forecast (optional, requires OPENWEATHER_API_KEY in .env).
+
+    Returns per-date: {temp_max} or empty if no key.
+    """
+    if not _OWM_KEY:
+        return {}
+    loc    = LOCATIONS[city_slug]
+    unit   = loc["unit"]
+    result = {}
+    try:
+        geo_url = f"https://api.openweathermap.org/geo/1.0/direct?q={loc['name']}&limit=1&appid={_OWM_KEY}"
+        geo = requests.get(geo_url, timeout=6).json()
+        if not geo:
+            return {}
+        lat, lon = geo[0]["lat"], geo[0]["lon"]
+        units_param = "imperial" if unit == "F" else "metric"
+        fc_url = (
+            f"https://api.openweathermap.org/data/2.5/forecast"
+            f"?lat={lat}&lon={lon}&appid={_OWM_KEY}&units={units_param}&cnt=40"
+        )
+        fc = requests.get(fc_url, timeout=8).json()
+        # Group 3-hour forecasts by day, track daily max
+        daily_max: dict = {}
+        for item in fc.get("list", []):
+            day = item["dt_txt"][:10]
+            if day not in dates:
+                continue
+            t = item["main"].get("temp_max", item["main"].get("temp"))
+            if t is not None:
+                if day not in daily_max or t > daily_max[day]:
+                    daily_max[day] = round(t) if unit == "F" else round(t, 1)
+        result = daily_max
+    except Exception as e:
+        print(f"  [OWM] {city_slug}: {e}")
+    return result
+
 
 def get_metar(city_slug):
     """Current observed temperature from METAR station. D+0 only."""
@@ -429,11 +552,21 @@ def save_state(state):
 # =============================================================================
 
 def take_forecast_snapshot(city_slug, dates):
-    """Fetches forecasts from all sources and returns a snapshot."""
-    now_str = datetime.now(timezone.utc).isoformat()
-    ecmwf   = get_ecmwf(city_slug, dates)
-    hrrr    = get_hrrr(city_slug, dates)
-    today   = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    """Fetches forecasts from all sources and returns a snapshot.
+
+    Sources queried (all per city+date):
+      ecmwf   — ECMWF IFS 0.25° via Open-Meteo (bias-corrected)
+      hrrr    — GFS/HRRR seamless via Open-Meteo (US only, D+0..D+2)
+      metar   — live METAR observation (D+0 only)
+      ensemble— 4-5 model ensemble via Open-Meteo (no key)
+      owm     — OpenWeatherMap 5-day (optional, if OPENWEATHER_API_KEY set)
+    """
+    now_str  = datetime.now(timezone.utc).isoformat()
+    ecmwf    = get_ecmwf(city_slug, dates)
+    hrrr     = get_hrrr(city_slug, dates)
+    ensemble = get_ensemble_forecast(city_slug, dates)
+    owm      = get_openweathermap_forecast(city_slug, dates)
+    today    = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     snapshots = {}
     for date in dates:
@@ -442,6 +575,8 @@ def take_forecast_snapshot(city_slug, dates):
             "ecmwf": ecmwf.get(date),
             "hrrr":  hrrr.get(date) if date <= (datetime.now(timezone.utc) + timedelta(days=2)).strftime("%Y-%m-%d") else None,
             "metar": get_metar(city_slug) if date == today else None,
+            "ensemble": ensemble.get(date),   # multi-model consensus
+            "owm":      owm.get(date),        # OpenWeatherMap (optional)
         }
         # Best forecast: HRRR for US D+0/D+1, otherwise ECMWF
         loc = LOCATIONS[city_slug]
@@ -530,17 +665,25 @@ def scan_and_update():
             outcomes.sort(key=lambda x: x["range"][0])
             mkt["all_outcomes"] = outcomes
 
-            # Forecast snapshot
+            # Forecast snapshot (includes multi-model ensemble)
             snap = snapshots.get(date, {})
+            ens  = snap.get("ensemble") or {}
             forecast_snap = {
-                "ts":          snap.get("ts"),
-                "horizon":     horizon,
-                "hours_left":  round(hours, 1),
-                "ecmwf":       snap.get("ecmwf"),
-                "hrrr":        snap.get("hrrr"),
-                "metar":       snap.get("metar"),
-                "best":        snap.get("best"),
-                "best_source": snap.get("best_source"),
+                "ts":              snap.get("ts"),
+                "horizon":         horizon,
+                "hours_left":      round(hours, 1),
+                "ecmwf":           snap.get("ecmwf"),
+                "hrrr":            snap.get("hrrr"),
+                "metar":           snap.get("metar"),
+                "owm":             snap.get("owm"),
+                "best":            snap.get("best"),
+                "best_source":     snap.get("best_source"),
+                # Ensemble consensus fields
+                "ensemble_mean":   ens.get("mean"),
+                "ensemble_spread": ens.get("spread"),
+                "ensemble_agree":  ens.get("agreement"),
+                "ensemble_hc":     ens.get("high_conf"),
+                "ensemble_models": ens.get("n_models", 0),
             }
             mkt["forecast_snapshots"].append(forecast_snap)
 
@@ -653,28 +796,72 @@ def scan_and_update():
                             kelly = round(calc_kelly(p, ask) * kelly_scale, 4)
                             size  = bet_size(kelly, balance)
                             if size >= 0.50:
+                                # ── HIGH CONFIDENCE check ─────────────────────
+                                # Ensemble agrees AND market price is lagging
+                                ens_data      = snap.get("ensemble") or {}
+                                ens_mean      = ens_data.get("mean")
+                                ens_agree     = ens_data.get("agreement", 0.0)
+                                ens_spread    = ens_data.get("spread")
+                                ens_hc_base   = ens_data.get("high_conf", False)
+                                market_lag    = round(p - ask, 3)
+
+                                # HC requires: ensemble agrees + ensemble mean in same bucket
+                                # + our probability high enough + market price not caught up
+                                ens_in_bucket = (
+                                    ens_mean is not None
+                                    and in_bucket(ens_mean, t_low, t_high)
+                                )
+                                # OWM cross-check if available
+                                owm_temp = snap.get("owm")
+                                owm_ok   = (
+                                    owm_temp is None  # no OWM → don't penalize
+                                    or in_bucket(owm_temp, t_low, t_high)
+                                )
+                                high_conf = (
+                                    ens_hc_base
+                                    and ens_in_bucket
+                                    and owm_ok
+                                    and p >= HIGH_CONF_MIN_PROB
+                                    and market_lag >= HIGH_CONF_MIN_MARKET_LAG
+                                )
+
+                                # HIGH CONF → use larger budget, else normal
+                                hc_size = (
+                                    round(min(calc_kelly(p, ask) * kelly_scale * BALANCE,
+                                              HIGH_CONF_MAX_BET), 2)
+                                    if high_conf else size
+                                )
+                                hc_size = max(hc_size, size)  # never less than normal
+
                                 best_signal = {
-                                    "market_id":    o["market_id"],
-                                    "question":     o["question"],
-                                    "bucket_low":   t_low,
-                                    "bucket_high":  t_high,
-                                    "entry_price":  ask,
-                                    "bid_at_entry": bid,
-                                    "spread":       spread,
-                                    "shares":       round(size / ask, 2),
-                                    "cost":         size,
-                                    "p":            round(p, 4),
-                                    "ev":           round(ev, 4),
-                                    "kelly":        round(kelly, 4),
-                                    "forecast_temp":forecast_temp,
-                                    "forecast_src": best_source,
-                                    "sigma":        sigma,
-                                    "opened_at":    snap.get("ts"),
-                                    "status":       "open",
-                                    "pnl":          None,
-                                    "exit_price":   None,
-                                    "close_reason": None,
-                                    "closed_at":    None,
+                                    "market_id":       o["market_id"],
+                                    "question":        o["question"],
+                                    "bucket_low":      t_low,
+                                    "bucket_high":     t_high,
+                                    "entry_price":     ask,
+                                    "bid_at_entry":    bid,
+                                    "spread":          spread,
+                                    "shares":          round(hc_size / ask, 2),
+                                    "cost":            hc_size,
+                                    "p":               round(p, 4),
+                                    "ev":              round(ev, 4),
+                                    "kelly":           round(kelly, 4),
+                                    "forecast_temp":   forecast_temp,
+                                    "forecast_src":    best_source,
+                                    "sigma":           sigma,
+                                    "opened_at":       snap.get("ts"),
+                                    "status":          "open",
+                                    "pnl":             None,
+                                    "exit_price":      None,
+                                    "close_reason":    None,
+                                    "closed_at":       None,
+                                    # Ensemble / high-confidence metadata
+                                    "high_conf":       high_conf,
+                                    "market_lag":      market_lag,
+                                    "ensemble_mean":   ens_mean,
+                                    "ensemble_spread": ens_spread,
+                                    "ensemble_agree":  ens_agree,
+                                    "ensemble_models": ens_data.get("n_models", 0),
                                 }
 
                 if best_signal:
@@ -706,13 +893,18 @@ def scan_and_update():
                         state["total_trades"] += 1
                         new_pos += 1
                         bucket_label = f"{best_signal['bucket_low']}-{best_signal['bucket_high']}{unit_sym}"
-                        print(f"  [BUY]  {loc['name']} {horizon} {date} | {bucket_label} | "
+                        hc_tag = " ⚡HC" if best_signal.get("high_conf") else ""
+                        print(f"  [BUY{hc_tag}]  {loc['name']} {horizon} {date} | {bucket_label} | "
                               f"${best_signal['entry_price']:.3f} | EV {best_signal['ev']:+.2f} | "
-                              f"${best_signal['cost']:.2f} ({best_signal['forecast_src'].upper()})")
+                              f"${best_signal['cost']:.2f} ({best_signal['forecast_src'].upper()})"
+                              + (f" | agree={best_signal.get('ensemble_agree', 0):.2f} lag={best_signal.get('market_lag', 0):+.2f}" if best_signal.get("high_conf") else ""))
                         tg.notify_buy(
                             loc["name"], date, bucket_label,
                             best_signal["entry_price"], best_signal["ev"],
                             best_signal["cost"], best_signal["forecast_src"], horizon,
+                            high_conf=best_signal.get("high_conf", False),
+                            ensemble_agree=best_signal.get("ensemble_agree"),
+                            market_lag=best_signal.get("market_lag"),
                         )
 
             # Market closed by time
