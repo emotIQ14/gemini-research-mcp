@@ -254,30 +254,6 @@ class ManagedProcess:
 
 
 # ── Lógica principal ───────────────────────────────────────────────────────────
-def _kill_orphans(script_names: list):
-    """Mata procesos python huérfanos por nombre de script antes de arrancar."""
-    try:
-        r = subprocess.run(
-            'wmic process where "name like \'%python%\'" get ProcessId,CommandLine',
-            shell=True, capture_output=True, text=True, timeout=10
-        )
-        my_pid = os.getpid()
-        for line in r.stdout.splitlines():
-            for script in script_names:
-                if script in line:
-                    parts = line.strip().split()
-                    pid = int(parts[-1]) if parts and parts[-1].isdigit() else None
-                    if pid and pid != my_pid:
-                        try:
-                            subprocess.run(["taskkill", "/PID", str(pid), "/F"],
-                                           capture_output=True, timeout=5)
-                            _log(f"[init] Huerfano eliminado: {script} PID={pid}")
-                        except Exception:
-                            pass
-    except Exception as e:
-        _log(f"[init] Error matando huerfanos: {e}")
-
-
 _RUNNING = True
 
 def _on_signal(sig, frame):
@@ -313,9 +289,6 @@ def run_supervisor():
     ]
 
     _log("=== Supervisor arrancando ===")
-
-    # Matar procesos huérfanos del ciclo anterior antes de arrancar nuevos
-    _kill_orphans(["weatherbot_bridge.py", "bot_v2.py"])
 
     for p in processes:
         p.start()

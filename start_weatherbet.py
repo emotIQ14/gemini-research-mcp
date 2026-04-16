@@ -31,10 +31,13 @@ def is_running(pid: int) -> bool:
 def start():
     # Comprobar si ya hay un supervisor corriendo
     if PID_FILE.exists():
-        pid = int(PID_FILE.read_text().strip())
-        if is_running(pid):
-            print(f"Supervisor ya corriendo (PID {pid}). Nada que hacer.")
-            return pid
+        try:
+            pid = int(PID_FILE.read_text().strip())
+            if is_running(pid):
+                print(f"Supervisor ya corriendo (PID {pid}). Nada que hacer.")
+                return pid
+        except (ValueError, OSError):
+            PID_FILE.unlink(missing_ok=True)  # PID file corrupto, ignorar
 
     # Lanzar supervisor desacoplado del proceso actual
     proc = subprocess.Popen(
