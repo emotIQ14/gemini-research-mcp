@@ -343,14 +343,14 @@ async def run_bridge():
                 date    = mkt.get("date", "?")
                 bridge["closed_orders"][market_id] = "resolved"
                 save_bridge_state(bridge)
-                icon = "✅" if outcome == "win" else "❌"
-                outcome_text = "Acertado" if outcome == "win" else "Fallado"
+                icon = "🏆" if outcome == "win" else "💔"
+                outcome_text = "GANADO — predicción correcta" if outcome == "win" else "PERDIDO — predicción incorrecta"
                 print(f"[{_ts()}] RESUELTO {city} {date} → {outcome} | PnL: {'+' if pnl>=0 else ''}{pnl:.2f}")
                 _tg(
-                    f"{icon} *Mercado resuelto por Polymarket*\n\n"
+                    f"{icon} *Mercado liquidado por Polymarket*\n\n"
                     f"*Mercado:* {city} — {date}\n"
                     f"*Resultado:* {outcome_text}\n"
-                    f"*Beneficio/Perdida:* {'+'if pnl>=0 else ''}{pnl:.2f}$\n\n"
+                    f"*Ganancia/Pérdida:* {'+'if pnl>=0 else ''}{pnl:.2f}$\n\n"
                     f"_{_ts()}_"
                 )
                 continue
@@ -395,6 +395,8 @@ async def run_bridge():
                 if real_shares < MIN_SHARES:
                     print(f"  [SELL-SKIP] Balance real {real_shares:.6f} < minimo. Mercado expirado/no-llenado.")
                     bridge["closed_orders"][market_id] = "expired_or_unfilled"
+                    # Limpiar cualquier sell_error previo — la posición ya no existe
+                    bridge["sell_errors"].pop(market_id, None)
                     save_bridge_state(bridge)
                     continue
 
@@ -423,7 +425,9 @@ async def run_bridge():
                         bridge["closed_orders"][market_id] = sell_id or "sold"
                         bridge["sell_errors"].pop(market_id, None)  # limpiar errores previos
                         save_bridge_state(bridge)
-                        icon = "🟢" if pnl >= 0 else "🔴"
+                        # Icono claro: verde para ganancias, amarillo para pérdida controlada
+                        icon    = "🟢" if pnl >= 0 else "🟡"
+                        header  = "Venta con GANANCIA" if pnl >= 0 else "Venta con pérdida (ejecutada OK)"
                         reason_labels = {
                             "take_profit":          "Take profit alcanzado",
                             "take_profit_2x":       "🎯 Take profit — ganancia ≥ 100%",
@@ -435,7 +439,7 @@ async def run_bridge():
                         }
                         reason_text = reason_labels.get(close_reason, close_reason)
                         _tg(
-                            f"{icon} *Venta ejecutada*\n\n"
+                            f"{icon} *{header}*\n\n"
                             f"*Mercado:* {city} — {date}\n"
                             f"*Motivo del cierre:* {reason_text}\n"
                             f"*Precio de entrada:* ${entry:.3f}\n"
