@@ -71,9 +71,22 @@ HIGH_CONF_AGREEMENT      = _cfg.get("high_conf_agreement", 0.70)         # min i
 HIGH_CONF_MIN_MARKET_LAG = _cfg.get("high_conf_min_market_lag", 0.10)   # min p−price gap
 HIGH_CONF_MIN_PROB       = _cfg.get("high_conf_min_prob", 0.55)          # min ensemble probability
 
-# Open-Meteo multi-model ensemble (all free, no API key needed)
-ENSEMBLE_MODELS_C = ["ecmwf_ifs025", "gfs_seamless", "icon_seamless", "gem_seamless", "arpege_world"]
-ENSEMBLE_MODELS_F = ["ecmwf_ifs025", "gfs_seamless", "icon_seamless", "gem_seamless"]
+# Open-Meteo multi-model ensemble (all free, no API key needed).
+# Region-aware: add the LOCAL model(s) for each zone (UKMO for EU, JMA for Asia,
+# MeteoFrance AROME for France) — they tend to be the most accurate inside
+# their own territory.
+ENSEMBLE_MODELS_BASE = ["ecmwf_ifs025", "gfs_seamless", "icon_seamless", "gem_seamless"]
+ENSEMBLE_MODELS_BY_REGION = {
+    "us":   ENSEMBLE_MODELS_BASE,                                    # 4 models
+    "eu":   ENSEMBLE_MODELS_BASE + ["ukmo_seamless", "arpege_world"], # 6 models
+    "asia": ENSEMBLE_MODELS_BASE + ["jma_seamless"],                  # 5 models
+    "ca":   ENSEMBLE_MODELS_BASE,                                    # 4 models (GEM already Canadian)
+    "sa":   ENSEMBLE_MODELS_BASE,                                    # 4 models
+    "oc":   ENSEMBLE_MODELS_BASE,                                    # 4 models
+}
+# Back-compat constants (deprecated but kept for external callers)
+ENSEMBLE_MODELS_C = ENSEMBLE_MODELS_BASE + ["ukmo_seamless", "arpege_world", "jma_seamless"]
+ENSEMBLE_MODELS_F = ENSEMBLE_MODELS_BASE
 
 # Optional: OpenWeatherMap key (from Weather-MCP-ClaudeDesktop or weatherbot env)
 _OWM_KEY = (os.getenv("OPENWEATHER_API_KEY", "") or "").strip()
@@ -263,7 +276,11 @@ def get_hrrr(city_slug, dates):
     return result
 
 def get_ensemble_forecast(city_slug, dates):
-    """Fetch multi-model ensemble via Open-Meteo (5 models, no API key).
+    """Fetch multi-model ensemble via Open-Meteo (4-6 models, no API key).
+
+    Region-aware: pulls the local model(s) for each zone (UKMO for EU,
+    JMA for Asia, MeteoFrance AROME for France) in addition to the global
+    4 (ECMWF, GFS, ICON, GEM).
 
     Returns per-date dict:
         mean        — weighted ensemble mean (°C or °F)
@@ -273,11 +290,12 @@ def get_ensemble_forecast(city_slug, dates):
         n_models    — how many models returned data for this date
         models      — {model_name: temp}
     """
-    loc      = LOCATIONS[city_slug]
-    unit     = loc["unit"]
+    loc       = LOCATIONS[city_slug]
+    unit      = loc["unit"]
+    region    = loc.get("region", "us")
     temp_unit = "fahrenheit" if unit == "F" else "celsius"
-    models   = ENSEMBLE_MODELS_F if unit == "F" else ENSEMBLE_MODELS_C
-    result   = {}
+    models    = ENSEMBLE_MODELS_BY_REGION.get(region, ENSEMBLE_MODELS_BASE)
+    result    = {}
     try:
         url = (
             f"https://api.open-meteo.com/v1/forecast"
@@ -326,6 +344,107 @@ def get_ensemble_forecast(city_slug, dates):
             }
     except Exception as e:
         print(f"  [ENSEMBLE] {city_slug}: {e}")
+    return result
+
+
+def get_yr_forecast(city_slug, dates):
+    """Yr.no / Met.no Norwegian Met Institute — free, no API key.
+
+    Gives hourly forecasts up to ~10 days. We aggregate per-date daily max
+    in the CITY's local timezone. Un día sólo se devuelve si tenemos la
+    franja diurna completa (la que contiene el máximo diario, normalmente
+    10:00-18:00 local). Si se pregunta por "hoy" y ya pasó la tarde, el
+    dato se OMITE (para no reportar min como max).
+    """
+    loc    = LOCATIONS[city_slug]
+    unit   = loc["unit"]
+    tz_str = TIMEZONES.get(city_slug, "UTC")
+    result = {}
+    try:
+        r = requests.get(
+            "https://api.met.no/weatherapi/locationforecast/2.0/compact",
+            params={"lat": loc["lat"], "lon": loc["lon"]},
+            headers={"User-Agent": "WeatherBet/1.0 (trading-research)"},
+            timeout=(5, 10),
+        )
+        if r.status_code != 200:
+            return {}
+        d = r.json()
+        from datetime import datetime as _dt
+        try:
+            import zoneinfo
+            tz = zoneinfo.ZoneInfo(tz_str)
+        except Exception:
+            tz = timezone.utc
+
+        # Agrupar por fecha local + recordar qué horas se vieron por día
+        daily_max = {}     # date -> max temp
+        daily_hours = {}   # date -> set of local hours we have data for
+        for entry in d.get("properties", {}).get("timeseries", []):
+            iso = entry.get("time")
+            t_c = entry.get("data", {}).get("instant", {}).get("details", {}).get("air_temperature")
+            if not iso or t_c is None:
+                continue
+            dt_utc  = _dt.fromisoformat(iso.replace("Z", "+00:00"))
+            dt_loc  = dt_utc.astimezone(tz)
+            date_s  = dt_loc.strftime("%Y-%m-%d")
+            if date_s not in dates:
+                continue
+            t_val = t_c * 9/5 + 32 if unit == "F" else t_c
+            t_val = round(t_val) if unit == "F" else round(t_val, 1)
+            if date_s not in daily_max or t_val > daily_max[date_s]:
+                daily_max[date_s] = t_val
+            daily_hours.setdefault(date_s, set()).add(dt_loc.hour)
+
+        # Sólo devolver días donde tengamos la ventana diurna (13:00-15:00)
+        for date_s, tmax in daily_max.items():
+            hours_seen = daily_hours.get(date_s, set())
+            diurnal = {13, 14, 15}
+            if diurnal & hours_seen:
+                result[date_s] = tmax
+            # else: pierde esa fecha (datos incompletos, no reportar)
+    except Exception as e:
+        print(f"  [YR] {city_slug}: {e}")
+    return result
+
+
+def get_qweather_forecast(city_slug, dates):
+    """QWeather / HeFeng (Chinese weather provider) — optional, requires
+    QWEATHER_API_KEY and QWEATHER_API_BASE in env. Particularly strong for
+    Asian cities. Falls back silently if not configured.
+    """
+    key  = os.getenv("QWEATHER_API_KEY", "").strip()
+    base = os.getenv("QWEATHER_API_BASE", "https://devapi.qweather.com").strip()
+    if not key or key == "your_api_key_here":
+        return {}
+    loc  = LOCATIONS[city_slug]
+    unit = loc["unit"]
+    result = {}
+    try:
+        # QWeather uses LocationID; lookup by coords
+        g = requests.get(
+            f"{base}/geo/v2/city/lookup",
+            params={"location": f"{loc['lon']:.2f},{loc['lat']:.2f}", "key": key},
+            timeout=8,
+        ).json()
+        locs = g.get("location") or []
+        if not locs:
+            return {}
+        loc_id = locs[0]["id"]
+        fc = requests.get(
+            f"{base}/v7/weather/7d",
+            params={"location": loc_id, "key": key},
+            timeout=8,
+        ).json()
+        for day in fc.get("daily", []):
+            date = day.get("fxDate")
+            tmax = day.get("tempMax")
+            if date in dates and tmax is not None:
+                t = float(tmax)
+                t_val = t * 9/5 + 32 if unit == "F" else t
+                result[date] = round(t_val) if unit == "F" else round(t_val, 1)
+    except Exception as e:
+        print(f"  [QWEATHER] {city_slug}: {e}")
     return result
 
 
@@ -555,17 +674,22 @@ def take_forecast_snapshot(city_slug, dates):
     """Fetches forecasts from all sources and returns a snapshot.
 
     Sources queried (all per city+date):
-      ecmwf   — ECMWF IFS 0.25° via Open-Meteo (bias-corrected)
-      hrrr    — GFS/HRRR seamless via Open-Meteo (US only, D+0..D+2)
-      metar   — live METAR observation (D+0 only)
-      ensemble— 4-5 model ensemble via Open-Meteo (no key)
-      owm     — OpenWeatherMap 5-day (optional, if OPENWEATHER_API_KEY set)
+      ecmwf    — ECMWF IFS 0.25° via Open-Meteo (bias-corrected, global)
+      hrrr     — GFS/HRRR seamless via Open-Meteo (US only, D+0..D+2)
+      metar    — live METAR observation (D+0 only)
+      ensemble — 4-6 model ensemble via Open-Meteo, region-aware
+                 (adds UKMO/Arpège in EU, JMA in Asia)
+      yr       — Yr.no / Met.no (Norwegian Met Institute) — free, very accurate
+      owm      — OpenWeatherMap 5-day (optional, if OPENWEATHER_API_KEY set)
+      qweather — QWeather/HeFeng (optional, strong for Asia; QWEATHER_API_KEY)
     """
     now_str  = datetime.now(timezone.utc).isoformat()
     ecmwf    = get_ecmwf(city_slug, dates)
     hrrr     = get_hrrr(city_slug, dates)
     ensemble = get_ensemble_forecast(city_slug, dates)
+    yr       = get_yr_forecast(city_slug, dates)
     owm      = get_openweathermap_forecast(city_slug, dates)
+    qweather = get_qweather_forecast(city_slug, dates)
     today    = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     snapshots = {}
@@ -576,7 +700,9 @@ def take_forecast_snapshot(city_slug, dates):
             "hrrr":  hrrr.get(date) if date <= (datetime.now(timezone.utc) + timedelta(days=2)).strftime("%Y-%m-%d") else None,
             "metar": get_metar(city_slug) if date == today else None,
             "ensemble": ensemble.get(date),   # multi-model consensus
+            "yr":       yr.get(date),         # Yr.no / Met.no (free)
             "owm":      owm.get(date),        # OpenWeatherMap (optional)
+            "qweather": qweather.get(date),   # QWeather/HeFeng (optional)
         }
         # Best forecast: HRRR for US D+0/D+1, otherwise ECMWF
         loc = LOCATIONS[city_slug]
@@ -675,7 +801,9 @@ def scan_and_update():
                 "ecmwf":           snap.get("ecmwf"),
                 "hrrr":            snap.get("hrrr"),
                 "metar":           snap.get("metar"),
-                "owm":             snap.get("owm"),
+                "yr":              snap.get("yr"),        # Yr.no / Met.no
+                "owm":             snap.get("owm"),        # OpenWeatherMap (optional)
+                "qweather":        snap.get("qweather"),  # QWeather (optional)
                 "best":            snap.get("best"),
                 "best_source":     snap.get("best_source"),
                 # Ensemble consensus fields
@@ -864,16 +992,28 @@ def scan_and_update():
                                     ens_mean is not None
                                     and in_bucket(ens_mean, t_low, t_high)
                                 )
-                                # OWM cross-check if available
-                                owm_temp = snap.get("owm")
-                                owm_ok   = (
-                                    owm_temp is None  # no OWM → don't penalize
-                                    or in_bucket(owm_temp, t_low, t_high)
-                                )
+                                # Cross-check con todas las fuentes disponibles.
+                                # Cada fuente que devuelva datos DEBE estar dentro del bucket
+                                # para que HC se active — si ninguna devuelve, no bloqueamos.
+                                extra_sources = {
+                                    "owm":      snap.get("owm"),
+                                    "yr":       snap.get("yr"),
+                                    "qweather": snap.get("qweather"),
+                                }
+                                # cross_ok = TODAS las fuentes con datos coinciden con el bucket
+                                cross_ok = True
+                                n_confirmations = 0
+                                for name, val in extra_sources.items():
+                                    if val is not None:
+                                        if in_bucket(val, t_low, t_high):
+                                            n_confirmations += 1
+                                        else:
+                                            cross_ok = False
+                                            break
                                 high_conf = (
                                     ens_hc_base
                                     and ens_in_bucket
-                                    and owm_ok
+                                    and cross_ok
                                     and p >= HIGH_CONF_MIN_PROB
                                     and market_lag >= HIGH_CONF_MIN_MARKET_LAG
                                 )

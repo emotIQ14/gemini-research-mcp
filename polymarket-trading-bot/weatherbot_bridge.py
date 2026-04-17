@@ -550,6 +550,47 @@ async def run_bridge():
             print(f"[{_ts()}] BUY{hc_label} {city} {date} {bucket} | ${price:.3f} x {size} | EV {ev:+.2f}{hc_detail}")
             print(f"  token: {clob_token[:25]}...")
 
+            # ── PRE-EXECUTION VALIDATION ─────────────────────────────────────
+            # Justo antes de mandar la orden, re-consultamos el order book para
+            # detectar movimientos bruscos (el bot decidió con datos de hace
+            # 1+ min; si el precio saltó mucho, mejor abortar que pagar slippage).
+            try:
+                rr = _req.get(
+                    f"https://gamma-api.polymarket.com/markets/{market_id}",
+                    timeout=(3, 6),
+                )
+                mdata = rr.json()
+                live_ask = float(mdata.get("bestAsk", price))
+                live_bid = float(mdata.get("bestBid", price))
+                live_spread = round(live_ask - live_bid, 4)
+                drift = round(abs(live_ask - price) / max(price, 0.001), 3)
+
+                # Abortar si: el ask saltó >20% respecto al precio que valoró el bot
+                #          o el spread en vivo es excesivo (>8c)
+                #          o el ask está en ≥0.45 (ya no cumple MAX_PRICE)
+                if drift > 0.20 or live_spread > 0.08 or live_ask >= 0.45:
+                    print(f"  [PRE-EXEC ABORT] live_ask=${live_ask:.3f} (drift {drift:+.0%}), spread=${live_spread:.3f}")
+                    bridge["placed_orders"][market_id] = {
+                        "order_id": "aborted_preexec",
+                        "clob_token": clob_token,
+                        "size": 0,
+                        "price": price,
+                        "reason": "price_drift" if drift > 0.20 else "spread_too_wide",
+                    }
+                    bridge["closed_orders"][market_id] = "aborted_preexec"
+                    save_bridge_state(bridge)
+                    continue
+
+                # Si hay drift pero es aceptable (<20%), usar el precio REAL
+                if drift > 0.05:
+                    print(f"  [PRE-EXEC] Actualizando precio de ${price:.3f} → ${live_ask:.3f}")
+                    price = live_ask
+                    # Recalcular size con el nuevo precio
+                    size = round(cost / price, 2) if cost else size
+                    size = max(size, MIN_SHARES)
+            except Exception as e:
+                print(f"  [PRE-EXEC] warn: no se pudo verificar precio en vivo: {e}")
+
             try:
                 order_args = OrderArgs(
                     token_id=clob_token,
