@@ -699,6 +699,42 @@ def scan_and_update():
             forecast_temp = snap.get("best")
             best_source   = snap.get("best_source")
 
+            # --- TAKE-PROFIT (primero que stop-loss: si el precio subió mucho, salir ya) ---
+            # Triggers:
+            #   (a) Bid ≥ entry × 2.0  → ganancia ≥ 100%, cobrar ya
+            #   (b) Bid ≥ 0.80         → muy cerca de resolución WIN, asegurar ganancia
+            #   (c) Bid ≥ entry × 1.5 Y horas_restantes ≤ 6 → cerca del fin con buena ganancia
+            if mkt.get("position") and mkt["position"].get("status") == "open":
+                pos = mkt["position"]
+                cur_bid = None
+                for o in outcomes:
+                    if o["market_id"] == pos["market_id"]:
+                        cur_bid = o.get("bid", o["price"])
+                        break
+                entry = pos["entry_price"]
+
+                if cur_bid is not None and cur_bid > 0:
+                    tp_trigger = None
+                    if cur_bid >= entry * 2.0:
+                        tp_trigger = "take_profit_2x"
+                    elif cur_bid >= 0.80:
+                        tp_trigger = "take_profit_near_win"
+                    elif cur_bid >= entry * 1.5 and hours <= 6:
+                        tp_trigger = "take_profit_end"
+
+                    if tp_trigger:
+                        pnl = round((cur_bid - entry) * pos["shares"], 2)
+                        balance += pos["cost"] + pnl
+                        pos["closed_at"]    = snap.get("ts")
+                        pos["close_reason"] = tp_trigger
+                        pos["exit_price"]   = cur_bid
+                        pos["pnl"]          = pnl
+                        pos["status"]       = "closed"
+                        closed += 1
+                        mult = cur_bid / entry if entry > 0 else 0
+                        print(f"  [TAKE-PROFIT] {loc['name']} {date} | entry ${entry:.3f} → ${cur_bid:.3f} ({mult:.1f}x) | PnL: +{pnl:.2f} [{tp_trigger}]")
+                        tg.notify_close(loc["name"], date, tp_trigger, entry, cur_bid, pnl)
+
             # --- STOP-LOSS AND TRAILING STOP ---
             if mkt.get("position") and mkt["position"].get("status") == "open":
                 pos = mkt["position"]
@@ -713,8 +749,11 @@ def scan_and_update():
                     entry = pos["entry_price"]
                     stop  = pos.get("stop_price", entry * 0.80)  # 20% stop by default
 
-                    # Trailing: if up 20%+ — move stop to breakeven
-                    if current_price >= entry * 1.20 and stop < entry:
+                    # Trailing: si sube 20%+ → stop a breakeven; si sube 50%+ → stop a entry*1.2
+                    if current_price >= entry * 1.50 and stop < entry * 1.20:
+                        pos["stop_price"] = entry * 1.20
+                        pos["trailing_activated"] = True
+                    elif current_price >= entry * 1.20 and stop < entry:
                         pos["stop_price"] = entry
                         pos["trailing_activated"] = True
 
@@ -981,14 +1020,23 @@ def scan_and_update():
     state["peak_balance"] = max(state.get("peak_balance", balance), balance)
     save_state(state)
 
-    # Run calibration + learning if enough data collected
+    # Refresh Polymarket ground-truth PnL antes de learning (cada scan)
+    try:
+        from refresh_real_pnl import refresh as _refresh_real
+        _refresh_real(verbose=False)
+    except Exception as e:
+        print(f"  [REAL_PNL] refresh failed: {e}")
+
+    # Run learning every cycle (usa real_pnl.json como ground truth para
+    # ev_mult, size_mult, blacklist). La calibración de sigma necesita más datos.
     all_mkts = load_all_markets()
+    if _LEARNING:
+        run_learning(all_mkts)
+
     resolved_count = len([m for m in all_mkts if m["status"] == "resolved"])
     if resolved_count >= CALIBRATION_MIN:
         global _cal
         _cal = run_calibration(all_mkts)
-        if _LEARNING:
-            run_learning(all_mkts)   # Adapts kelly, min_ev, best_source
 
     return new_pos, closed, resolved
 

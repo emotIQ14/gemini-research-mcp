@@ -425,10 +425,13 @@ async def run_bridge():
                         save_bridge_state(bridge)
                         icon = "🟢" if pnl >= 0 else "🔴"
                         reason_labels = {
-                            "take_profit": "Take profit alcanzado",
-                            "stop_loss": "Stop loss activado",
-                            "trailing_stop": "Trailing stop activado",
-                            "forecast_changed": "Prevision meteorologica cambiada",
+                            "take_profit":          "Take profit alcanzado",
+                            "take_profit_2x":       "🎯 Take profit — ganancia ≥ 100%",
+                            "take_profit_near_win": "🎯 Take profit — mercado casi ganador",
+                            "take_profit_end":      "🎯 Take profit — cierre con ganancia ≥ 50%",
+                            "stop_loss":            "Stop loss activado",
+                            "trailing_stop":        "Trailing stop activado",
+                            "forecast_changed":     "Prevision meteorologica cambiada",
                         }
                         reason_text = reason_labels.get(close_reason, close_reason)
                         _tg(
