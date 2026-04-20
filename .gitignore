@@ -9,6 +9,8 @@ weatherbot/data/markets/
 weatherbot/data/state.json
 weatherbot/data/adaptive_config.json
 weatherbot/data/real_pnl.json
+weatherbot/data/climatology.json
+weatherbot/data/climate_indices_cache.json
 polymarket-trading-bot/bridge_state.json
 
 # IDE / local tooling

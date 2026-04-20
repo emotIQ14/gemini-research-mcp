@@ -40,6 +40,22 @@ except ImportError:
     def load_adaptive(): return {"kelly_scale": {}, "min_ev": None, "best_source": {}}
     def run_learning(markets): return {}
 
+try:
+    from climatology import get_climatology, anomaly_z, anomaly_class
+    _CLIMATOLOGY = True
+except ImportError:
+    _CLIMATOLOGY = False
+    def get_climatology(*a, **k): return None
+    def anomaly_z(t, n): return None
+    def anomaly_class(z): return "normal"
+
+try:
+    from climate_indices import get_climate_bias
+    _CLIMATE_INDICES = True
+except ImportError:
+    _CLIMATE_INDICES = False
+    def get_climate_bias(*a, **k): return 0.0
+
 # =============================================================================
 # CONFIG
 # =============================================================================
@@ -791,9 +807,30 @@ def scan_and_update():
             outcomes.sort(key=lambda x: x["range"][0])
             mkt["all_outcomes"] = outcomes
 
-            # Forecast snapshot (includes multi-model ensemble)
+            # Forecast snapshot (includes multi-model ensemble + climatología)
             snap = snapshots.get(date, {})
             ens  = snap.get("ensemble") or {}
+
+            # ── Climatología + climate bias ──────────────────────────────────
+            # Normal histórica (30 años) + anomaly z-score del forecast vs normal
+            clim_norm = None
+            if _CLIMATOLOGY:
+                try:
+                    clim_norm = get_climatology(
+                        city_slug, date,
+                        {"lat": loc["lat"], "lon": loc["lon"],
+                         "unit": loc["unit"], "tz": TIMEZONES.get(city_slug, "UTC")}
+                    )
+                except Exception as e:
+                    print(f"  [CLIM] {city_slug}: {e}")
+                    clim_norm = None
+
+            # Forecast "ajustado" con climate bias (ENSO / AO)
+            fc_raw     = snap.get("best")
+            clim_bias  = get_climate_bias(city_slug, date) if _CLIMATE_INDICES else 0.0
+            fc_adjusted = (fc_raw + clim_bias) if fc_raw is not None else None
+            anom_z     = anomaly_z(fc_adjusted, clim_norm) if (fc_adjusted and clim_norm) else None
+            anom_cls   = anomaly_class(anom_z)
             forecast_snap = {
                 "ts":              snap.get("ts"),
                 "horizon":         horizon,
@@ -804,7 +841,9 @@ def scan_and_update():
                 "yr":              snap.get("yr"),        # Yr.no / Met.no
                 "owm":             snap.get("owm"),        # OpenWeatherMap (optional)
                 "qweather":        snap.get("qweather"),  # QWeather (optional)
-                "best":            snap.get("best"),
+                "best":            fc_raw,
+                "best_adjusted":   fc_adjusted,           # con climate bias
+                "climate_bias":    clim_bias,
                 "best_source":     snap.get("best_source"),
                 # Ensemble consensus fields
                 "ensemble_mean":   ens.get("mean"),
@@ -812,6 +851,11 @@ def scan_and_update():
                 "ensemble_agree":  ens.get("agreement"),
                 "ensemble_hc":     ens.get("high_conf"),
                 "ensemble_models": ens.get("n_models", 0),
+                # Climatología (30-year normal)
+                "clim_mean":       clim_norm.get("mean") if clim_norm else None,
+                "clim_std":        clim_norm.get("std")  if clim_norm else None,
+                "anomaly_z":       anom_z,
+                "anomaly_class":   anom_cls,
             }
             mkt["forecast_snapshots"].append(forecast_snap)
 
@@ -824,8 +868,33 @@ def scan_and_update():
             }
             mkt["market_snapshots"].append(market_snap)
 
-            forecast_temp = snap.get("best")
+            # Usar forecast AJUSTADO (con climate bias) para decisiones
+            forecast_temp = fc_adjusted if fc_adjusted is not None else snap.get("best")
             best_source   = snap.get("best_source")
+
+            # --- PRE-RESOLUTION SELL (vender antes de que el mercado liquide a 0) ---
+            # Si quedan <2h y nuestra posición pierde → salir al bid para recuperar algo
+            # en lugar de esperar la liquidación que la dejaría en cero.
+            if mkt.get("position") and mkt["position"].get("status") == "open" and hours < 2.0:
+                pos = mkt["position"]
+                cur_bid = None
+                for o in outcomes:
+                    if o["market_id"] == pos["market_id"]:
+                        cur_bid = o.get("bid", o["price"])
+                        break
+                entry = pos["entry_price"]
+                # Si el precio ha caído por debajo del entry Y aún hay bid>0.05 → vender ya
+                if cur_bid is not None and 0.05 <= cur_bid < entry * 0.95:
+                    pnl = round((cur_bid - entry) * pos["shares"], 2)
+                    balance += pos["cost"] + pnl
+                    pos["closed_at"]    = snap.get("ts")
+                    pos["close_reason"] = "pre_resolution_close"
+                    pos["exit_price"]   = cur_bid
+                    pos["pnl"]          = pnl
+                    pos["status"]       = "closed"
+                    closed += 1
+                    print(f"  [PRE-RES] {loc['name']} {date} | entry ${entry:.3f} → ${cur_bid:.3f} ({hours:.1f}h left) | PnL: {pnl:+.2f}")
+                    tg.notify_close(loc["name"], date, "pre_resolution_close", entry, cur_bid, pnl)
 
             # --- TAKE-PROFIT (primero que stop-loss: si el precio subió mucho, salir ya) ---
             # Triggers:
@@ -945,6 +1014,21 @@ def scan_and_update():
                     time.sleep(0.1)
                     continue
 
+                # ── CORRELATION LIMIT: máximo 2 posiciones abiertas para la misma ciudad.
+                # Evita cargar 5 apuestas correlacionadas en NYC (lunes, martes, miércoles…)
+                # que son esencialmente la misma "bet": si acertamos un buen día, acertamos todos.
+                open_city_count = sum(
+                    1 for m in load_all_markets()
+                    if m.get("city") == city_slug
+                    and m.get("position")
+                    and m["position"].get("status") == "open"
+                )
+                MAX_OPEN_PER_CITY = 2
+                if open_city_count >= MAX_OPEN_PER_CITY:
+                    save_market(mkt)
+                    time.sleep(0.1)
+                    continue
+
                 # Find exactly ONE bucket that matches the forecast
                 # If forecast doesn't fit any bucket cleanly — skip this market
                 matched_bucket = None
@@ -966,6 +1050,11 @@ def scan_and_update():
                     # Per-city ev_multiplier → sube el umbral en ciudades volátiles
                     eff_min_ev = (_adp.get("min_ev") or MIN_EV) * _ev_mult
                     kelly_scale = _adp.get("kelly_scale", {}).get(city_slug, 1.0)
+
+                    # ── LIQUIDITY FILTER ──────────────────────────────────
+                    # Rechazar mercados con spread >5c o bid ≤ 0.02 (ilíquidos)
+                    if spread > 0.05 or bid <= 0.02:
+                        continue
 
                     # All filters — if any fails, skip this market entirely
                     if volume >= MIN_VOLUME:
@@ -1010,6 +1099,9 @@ def scan_and_update():
                                         else:
                                             cross_ok = False
                                             break
+                                # Anomaly boost: si el forecast es 1.5σ+ de la normal,
+                                # el mercado tarda más en pricear → ventaja extra
+                                anomaly_boost = abs(anom_z) >= 1.5 if anom_z is not None else False
                                 high_conf = (
                                     ens_hc_base
                                     and ens_in_bucket
@@ -1017,6 +1109,11 @@ def scan_and_update():
                                     and p >= HIGH_CONF_MIN_PROB
                                     and market_lag >= HIGH_CONF_MIN_MARKET_LAG
                                 )
+                                # Override: día climáticamente extremo + 4 modelos + bucket match
+                                # → HC aunque agreement score no llegue al umbral normal
+                                if anomaly_boost and ens_in_bucket and cross_ok and p >= 0.60 \
+                                        and market_lag >= 0.12 and len(extra_sources) > 0:
+                                    high_conf = True
 
                                 # HIGH CONF → use larger budget, else normal
                                 hc_size = (
@@ -1055,6 +1152,11 @@ def scan_and_update():
                                     "ensemble_spread": ens_spread,
                                     "ensemble_agree":  ens_agree,
                                     "ensemble_models": ens_data.get("n_models", 0),
+                                    # Climatología + climate indices
+                                    "anomaly_z":       anom_z,
+                                    "anomaly_class":   anom_cls,
+                                    "climate_bias":    clim_bias,
+                                    "clim_mean":       clim_norm.get("mean") if clim_norm else None,
                                 }
 
                 if best_signal:
