@@ -104,9 +104,11 @@ ENSEMBLE_MODELS_BY_REGION = {
 ENSEMBLE_MODELS_C = ENSEMBLE_MODELS_BASE + ["ukmo_seamless", "arpege_world", "jma_seamless"]
 ENSEMBLE_MODELS_F = ENSEMBLE_MODELS_BASE
 
-# Optional: OpenWeatherMap key (from Weather-MCP-ClaudeDesktop or weatherbot env)
+# OpenWeatherMap keys (primary + optional backup for rate-limit fallback)
 _OWM_KEY = (os.getenv("OPENWEATHER_API_KEY", "") or "").strip()
 _OWM_KEY = None if _OWM_KEY in ("", "your_api_key_here") else _OWM_KEY
+_OWM_KEY_BACKUP = (os.getenv("OPENWEATHER_API_KEY_BACKUP", "") or "").strip()
+_OWM_KEY_BACKUP = None if _OWM_KEY_BACKUP in ("", "your_api_key_here") else _OWM_KEY_BACKUP
 
 DATA_DIR         = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -464,42 +466,49 @@ def get_qweather_forecast(city_slug, dates):
     return result
 
 
-def get_openweathermap_forecast(city_slug, dates):
-    """OpenWeatherMap 5-day forecast (optional, requires OPENWEATHER_API_KEY in .env).
+def _owm_fetch(loc, unit, key, dates):
+    """Un intento de fetch a OWM con una key concreta. Devuelve {date: temp_max}."""
+    units_param = "imperial" if unit == "F" else "metric"
+    # Usamos lat/lon directo de LOCATIONS (evita geocoding extra)
+    fc_url = (
+        f"https://api.openweathermap.org/data/2.5/forecast"
+        f"?lat={loc['lat']}&lon={loc['lon']}&appid={key}&units={units_param}&cnt=40"
+    )
+    r = requests.get(fc_url, timeout=(5, 10))
+    if r.status_code != 200:
+        return None  # signal failure, allow fallback
+    fc = r.json()
+    daily_max = {}
+    for item in fc.get("list", []):
+        day = item["dt_txt"][:10]
+        if day not in dates:
+            continue
+        t = item["main"].get("temp_max", item["main"].get("temp"))
+        if t is not None:
+            if day not in daily_max or t > daily_max[day]:
+                daily_max[day] = round(t) if unit == "F" else round(t, 1)
+    return daily_max
 
-    Returns per-date: {temp_max} or empty if no key.
+
+def get_openweathermap_forecast(city_slug, dates):
+    """OpenWeatherMap 5-day forecast con failover a key backup si hay una.
+
+    Devuelve {date: temp_max} en la misma unidad que la ciudad.
     """
     if not _OWM_KEY:
         return {}
-    loc    = LOCATIONS[city_slug]
-    unit   = loc["unit"]
-    result = {}
+    loc  = LOCATIONS[city_slug]
+    unit = loc["unit"]
     try:
-        geo_url = f"https://api.openweathermap.org/geo/1.0/direct?q={loc['name']}&limit=1&appid={_OWM_KEY}"
-        geo = requests.get(geo_url, timeout=6).json()
-        if not geo:
-            return {}
-        lat, lon = geo[0]["lat"], geo[0]["lon"]
-        units_param = "imperial" if unit == "F" else "metric"
-        fc_url = (
-            f"https://api.openweathermap.org/data/2.5/forecast"
-            f"?lat={lat}&lon={lon}&appid={_OWM_KEY}&units={units_param}&cnt=40"
-        )
-        fc = requests.get(fc_url, timeout=8).json()
-        # Group 3-hour forecasts by day, track daily max
-        daily_max: dict = {}
-        for item in fc.get("list", []):
-            day = item["dt_txt"][:10]
-            if day not in dates:
-                continue
-            t = item["main"].get("temp_max", item["main"].get("temp"))
-            if t is not None:
-                if day not in daily_max or t > daily_max[day]:
-                    daily_max[day] = round(t) if unit == "F" else round(t, 1)
-        result = daily_max
+        res = _owm_fetch(loc, unit, _OWM_KEY, dates)
+        if res is None and _OWM_KEY_BACKUP:
+            # Primary falló (401/429/etc) → probar backup
+            print(f"  [OWM] {city_slug}: primary falló, probando backup key")
+            res = _owm_fetch(loc, unit, _OWM_KEY_BACKUP, dates)
+        return res or {}
     except Exception as e:
         print(f"  [OWM] {city_slug}: {e}")
-    return result
+        return {}
 
 
 def get_metar(city_slug):
