@@ -941,7 +941,15 @@ def scan_and_update():
                         print(f"  [TAKE-PROFIT] {loc['name']} {date} | entry ${entry:.3f} → ${cur_bid:.3f} ({mult:.1f}x) | PnL: +{pnl:.2f} [{tp_trigger}]")
                         tg.notify_close(loc["name"], date, tp_trigger, entry, cur_bid, pnl)
 
-            # --- STOP-LOSS AND TRAILING STOP ---
+            # --- STOP-LOSS CONFIRMADO POR ENSEMBLE ──────────────────────
+            # Análisis forense: stop_loss perdió -$480 en 88 cierres. Muchos
+            # eran "whipsaws" — el precio bajó 20% pero nuestra previsión
+            # seguía correcta (ruido de mercado, no cambio real).
+            # Ahora el stop_loss requiere que:
+            #   (a) El precio haya caído por debajo del umbral Y
+            #   (b) El ensemble mean ESTÉ FUERA de nuestro bucket
+            # Si ensemble sigue confirmando el bucket, aguantamos.
+            # TRAILING-STOP se mantiene igual (si ya subimos, el trailing protege).
             if mkt.get("position") and mkt["position"].get("status") == "open":
                 pos = mkt["position"]
                 current_price = None
@@ -953,40 +961,81 @@ def scan_and_update():
                 if current_price is not None:
                     current_price = o.get("bid", current_price)  # sell at bid
                     entry = pos["entry_price"]
-                    stop  = pos.get("stop_price", entry * 0.80)  # 20% stop by default
+                    stop  = pos.get("stop_price", entry * 0.80)  # 20% stop por defecto
+                    trailing_active = pos.get("trailing_activated", False)
 
                     # Trailing: si sube 20%+ → stop a breakeven; si sube 50%+ → stop a entry*1.2
                     if current_price >= entry * 1.50 and stop < entry * 1.20:
                         pos["stop_price"] = entry * 1.20
                         pos["trailing_activated"] = True
+                        trailing_active = True
                     elif current_price >= entry * 1.20 and stop < entry:
                         pos["stop_price"] = entry
                         pos["trailing_activated"] = True
+                        trailing_active = True
 
                     # Check stop
                     if current_price <= stop:
-                        pnl = round((current_price - entry) * pos["shares"], 2)
-                        balance += pos["cost"] + pnl
-                        pos["closed_at"]    = snap.get("ts")
-                        pos["close_reason"] = "stop_loss" if current_price < entry else "trailing_stop"
-                        pos["exit_price"]   = current_price
-                        pos["pnl"]          = pnl
-                        pos["status"]       = "closed"
-                        closed += 1
-                        reason = "STOP" if current_price < entry else "TRAILING BE"
-                        print(f"  [{reason}] {loc['name']} {date} | entry ${entry:.3f} exit ${current_price:.3f} | PnL: {'+'if pnl>=0 else ''}{pnl:.2f}")
+                        # Si es trailing (ya ganamos antes), SIEMPRE vender (protege beneficios)
+                        # Si es stop_loss puro (nunca ganamos), requerir confirmación ensemble
+                        should_close = True
+                        if not trailing_active:
+                            # stop_loss puro → exigir que ensemble coincida con el precio
+                            ens_data = snap.get("ensemble") or {}
+                            ens_mean = ens_data.get("mean")
+                            old_low  = pos["bucket_low"]
+                            old_high = pos["bucket_high"]
+                            if ens_mean is not None and in_bucket(ens_mean, old_low, old_high):
+                                # El ensemble sigue dándonos la razón → aguantar pese al drop
+                                should_close = False
+                                print(f"  [STOP-HOLD] {loc['name']} {date} | precio ${current_price:.3f} bajó a stop, pero ensemble μ={ens_mean} sigue en bucket. Aguantando.")
 
-            # --- CLOSE POSITION if forecast shifted 2+ degrees ---
+                        if should_close:
+                            pnl = round((current_price - entry) * pos["shares"], 2)
+                            balance += pos["cost"] + pnl
+                            pos["closed_at"]    = snap.get("ts")
+                            pos["close_reason"] = "stop_loss" if current_price < entry else "trailing_stop"
+                            pos["exit_price"]   = current_price
+                            pos["pnl"]          = pnl
+                            pos["status"]       = "closed"
+                            closed += 1
+                            reason = "STOP" if current_price < entry else "TRAILING BE"
+                            print(f"  [{reason}] {loc['name']} {date} | entry ${entry:.3f} exit ${current_price:.3f} | PnL: {'+'if pnl>=0 else ''}{pnl:.2f}")
+
+            # --- CLOSE POSITION si forecast cambió de forma CONFIRMADA ─────────
+            # Análisis forense del histórico: forecast_changed nos costó -$758 en
+            # 111 cierres (-$6.83/trade). Estaba sobre-reaccionando a ruido de una
+            # sola fuente. Ahora requerimos DOBLE confirmación:
+            #   1. Forecast principal (ECMWF/HRRR) fuera del bucket
+            #   2. Ensemble mean TAMBIÉN fuera del bucket
+            #   3. Buffer aumentado a 3°F / 1.5°C (antes 2°F / 1°C)
+            #   4. Además, si tenemos tiempo de sobra (hours > 12), aguantamos —
+            #      los forecasts se auto-corrigen en 1-2 ciclos con frecuencia.
             if mkt.get("position") and forecast_temp is not None:
                 pos = mkt["position"]
                 old_bucket_low  = pos["bucket_low"]
                 old_bucket_high = pos["bucket_high"]
-                # 2-degree buffer — avoid closing on small forecast fluctuations
                 unit = loc["unit"]
-                buffer = 2.0 if unit == "F" else 1.0
+                buffer = 3.0 if unit == "F" else 1.5      # antes 2.0 / 1.0
                 mid_bucket = (old_bucket_low + old_bucket_high) / 2 if old_bucket_low != -999 and old_bucket_high != 999 else forecast_temp
                 forecast_far = abs(forecast_temp - mid_bucket) > (abs(mid_bucket - old_bucket_low) + buffer)
-                if not in_bucket(forecast_temp, old_bucket_low, old_bucket_high) and forecast_far:
+                primary_out = not in_bucket(forecast_temp, old_bucket_low, old_bucket_high)
+
+                # Confirmación con ensemble (si disponible)
+                ens_data = snap.get("ensemble") or {}
+                ens_mean = ens_data.get("mean")
+                ens_out = (ens_mean is not None
+                           and not in_bucket(ens_mean, old_bucket_low, old_bucket_high))
+                # Si el ensemble NO confirma la salida → es ruido de ECMWF, aguantar
+                confirmed = primary_out and forecast_far and (ens_out or ens_mean is None)
+
+                # Salvaguarda temporal: si quedan >12h, dar tiempo a auto-corrección
+                # (a menos que el cambio sea MUY grande > buffer*2)
+                very_far = abs(forecast_temp - mid_bucket) > (abs(mid_bucket - old_bucket_low) + buffer * 2)
+                if hours > 12 and not very_far:
+                    confirmed = False
+
+                if confirmed:
                     current_price = None
                     for o in outcomes:
                         if o["market_id"] == pos["market_id"]:
@@ -1001,7 +1050,7 @@ def scan_and_update():
                         mkt["position"]["pnl"]          = pnl
                         mkt["position"]["status"]       = "closed"
                         closed += 1
-                        print(f"  [CLOSE] {loc['name']} {date} — forecast changed | PnL: {'+'if pnl>=0 else ''}{pnl:.2f}")
+                        print(f"  [CLOSE] {loc['name']} {date} — forecast changed (confirmed) | PnL: {'+'if pnl>=0 else ''}{pnl:.2f}")
 
             # --- OPEN POSITION ---
             if not mkt.get("position") and forecast_temp is not None and hours >= MIN_HOURS:
@@ -1064,6 +1113,19 @@ def scan_and_update():
                     # Rechazar mercados con spread >5c o bid ≤ 0.02 (ilíquidos)
                     if spread > 0.05 or bid <= 0.02:
                         continue
+
+                    # ── MID-PRICE TRAP FILTER ─────────────────────────────
+                    # Análisis forense: el rango $0.20-$0.30 tiene el peor PnL
+                    # (-$7.16/trade) en 31 trades históricos. Es la "zona
+                    # muerta": el mercado ya descuenta parcialmente la señal
+                    # y cualquier ruido nos saca en pérdida. Saltamos este
+                    # rango salvo que la ventaja sea muy alta (EV >= 25%).
+                    if 0.20 <= ask < 0.30:
+                        # Calcular EV provisional para decidir
+                        p_provisional = bucket_prob(forecast_temp, t_low, t_high, sigma)
+                        ev_provisional = calc_ev(p_provisional, ask)
+                        if ev_provisional < 0.25:
+                            continue   # zona muerta sin ventaja suficiente
 
                     # All filters — if any fails, skip this market entirely
                     if volume >= MIN_VOLUME:

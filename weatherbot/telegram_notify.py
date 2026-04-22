@@ -77,9 +77,8 @@ def _notion_bullet(text: str, url: str = None):
 
 def notify_start(n_cities: int, balance: float, scan_min: int):
     msg = (
-        f"🚀 *WeatherBet arrancado*\n"
-        f"🌍 {n_cities} ciudades | 💰 ${balance:,.0f} virtual\n"
-        f"⏱ Scan cada {scan_min} min\n"
+        f"🚀 *WeatherBet arrancado* — operando con *dinero REAL*\n"
+        f"🌍 {n_cities} ciudades | ⏱ Scan cada {scan_min} min\n"
         f"🕐 _{_ts()}_"
     )
     _send(msg)
@@ -135,19 +134,23 @@ def notify_close(city_name: str, date: str, reason: str,
 
 
 def notify_resolve(city_name: str, date: str, outcome: str, pnl: float,
-                   balance: float):
-    emoji = "🏆" if outcome == "win" else "💸"
+                   balance: float = None):
+    # Nota: 'balance' es track paper para learning. NO se muestra para evitar
+    # confusión con el balance USDC real en Polymarket (bridge manda heartbeat
+    # cada 3h con el saldo real + valor de posiciones abiertas).
+    emoji = "🏆" if outcome == "win" else "💔"
     pnl_str = f"{'+'if pnl>=0 else ''}{pnl:.2f}"
+    outcome_text = "PREDICCIÓN CORRECTA" if outcome == "win" else "PREDICCIÓN FALLIDA"
     msg = (
-        f"{emoji} *{outcome.upper()} — {city_name}*\n"
-        f"📅 {date} | PnL: *{pnl_str}*\n"
-        f"💰 Balance: ${balance:,.2f}\n"
+        f"{emoji} *{outcome_text} — {city_name}*\n"
+        f"📅 {date}\n"
+        f"💵 Resultado posición: *{pnl_str}$*\n"
         f"🕐 _{_ts()}_"
     )
     _send(msg)
     _notion_append([
         _notion_bullet(
-            f"{emoji} {outcome.upper()} {city_name} {date} | PnL {pnl_str} | Balance ${balance:,.2f}"
+            f"{emoji} {outcome.upper()} {city_name} {date} | PnL {pnl_str}$"
         )
     ])
 
@@ -191,14 +194,15 @@ def notify_new_markets(events: list):
 
 def notify_status(balance: float, start: float, wins: int, losses: int,
                   open_pos: int):
+    # Track de rendimiento del algoritmo (sin mostrar balance paper para
+    # evitar confusión con el saldo real en Polymarket que manda el bridge).
     total   = wins + losses
-    ret_pct = (balance - start) / start * 100 if start else 0
     wr      = f"{wins/total:.0%}" if total else "—"
     msg = (
-        f"📊 *WeatherBet Status*\n"
-        f"💰 Balance: ${balance:,.2f} ({'+' if ret_pct>=0 else ''}{ret_pct:.1f}%)\n"
-        f"📈 Trades: {total} | W: {wins} | L: {losses} | WR: {wr}\n"
+        f"📊 *Estado del algoritmo*\n"
+        f"📈 Trades históricos: {total} | W: {wins} | L: {losses} | WR: {wr}\n"
         f"🔓 Posiciones abiertas: {open_pos}\n"
+        f"💡 _El saldo real de Polymarket se envía en el heartbeat del bridge_\n"
         f"🕐 _{_ts()}_"
     )
     _send(msg)
@@ -208,10 +212,9 @@ def notify_shutdown(reason: str, balance: float, wins: int, losses: int):
     total = wins + losses
     wr    = f"{wins/total:.0%}" if total else "—"
     msg = (
-        f"🔒 *WeatherBet cerrando*\n"
-        f"Razón: {reason}\n"
-        f"💰 Balance final: ${balance:,.2f}\n"
-        f"📊 {total} trades | WR {wr}\n"
+        f"🔒 *WeatherBet deteniéndose*\n"
+        f"*Razón:* {reason}\n"
+        f"*Trades históricos:* {total} | WR {wr}\n"
         f"🕐 _{_ts()}_"
     )
     _send(msg)
@@ -220,7 +223,7 @@ def notify_shutdown(reason: str, balance: float, wins: int, losses: int):
         "type": "callout",
         "callout": {
             "rich_text": [{"type": "text", "text": {
-                "content": f"🔒 Sesión cerrada: {reason} — balance ${balance:,.2f} — {_ts()}"
+                "content": f"🔒 Sesión cerrada: {reason} — {_ts()}"
             }}],
             "icon": {"emoji": "⚠️"},
             "color": "red_background",

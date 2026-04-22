@@ -439,13 +439,14 @@ async def run_bridge():
                         }
                         reason_text = reason_labels.get(close_reason, close_reason)
                         _tg(
-                            f"{icon} *{header}*\n\n"
+                            f"{icon} *VENTA REAL EJECUTADA — {header}*\n"
+                            f"_Dinero real USDC — Polymarket on-chain_\n\n"
                             f"*Mercado:* {city} — {date}\n"
                             f"*Motivo del cierre:* {reason_text}\n"
                             f"*Precio de entrada:* ${entry:.3f}\n"
                             f"*Precio de salida:* ${sell_price:.3f}\n"
                             f"*Cantidad vendida:* {sell_shares} shares\n"
-                            f"*Resultado:* {'+'if pnl>=0 else ''}{pnl:.2f}$\n\n"
+                            f"*Resultado neto:* *{'+'if pnl>=0 else ''}{pnl:.2f}$ USDC*\n\n"
                             f"_{_ts()}_"
                         )
                     else:
@@ -627,12 +628,14 @@ async def run_bridge():
                             f"*Acuerdo:* {ens_agree:.0%} | *Ventaja:* {mkt_lag:+.0%}"
                         )
                     _tg(
-                        f"{'⚡ ' if is_high_conf else ''}*Compra ejecutada{hc_label}*\n\n"
+                        f"{'⚡ ' if is_high_conf else ''}*🟢 COMPRA REAL EJECUTADA{hc_label}*\n"
+                        f"_Dinero real USDC — Polymarket on-chain_\n\n"
                         f"*Mercado:* {city} — {date}\n"
                         f"*Rango apostado:* {bucket}\n"
                         f"*Precio de entrada:* ${price:.3f}\n"
-                        f"*Cantidad:* {size} shares (${cost_usd:.2f} invertidos)\n"
-                        f"*Valor esperado:* {ev:+.2f}"
+                        f"*Cantidad:* {size} shares\n"
+                        f"*Capital invertido:* *${cost_usd:.2f} USDC*\n"
+                        f"*Valor esperado (EV):* {ev:+.2f}"
                         f"{hc_line}\n\n"
                         f"_{_ts()}_"
                     )
