@@ -208,6 +208,34 @@ def notify_status(balance: float, start: float, wins: int, losses: int,
     _send(msg)
 
 
+def notify_error(component: str, error_type: str, detail: str,
+                 critical: bool = False, context: dict = None):
+    """Alerta genérica de fallo. Llamar desde TODOS los puntos de error.
+
+    Args:
+        component: "weatherbot", "bridge", "supervisor", "watchdog", "scan", etc.
+        error_type: Texto corto del tipo: "Excepción", "BUY fallido", "SCAN error", etc.
+        detail: Mensaje del error (truncado a 250 chars)
+        critical: Si True, usa 🚨 + tag CRÍTICO. Si False, usa ⚠️.
+        context: Dict opcional con campos extra a mostrar (city, date, etc.)
+    """
+    icon = "🚨" if critical else "⚠️"
+    tag  = " *CRÍTICO*" if critical else ""
+    lines = [
+        f"{icon} *Error en {component}{tag}*",
+        "",
+        f"*Tipo:* {error_type}",
+    ]
+    if context:
+        for k, v in context.items():
+            lines.append(f"*{k}:* {v}")
+    lines.append("")
+    lines.append(f"*Detalle:*\n```\n{str(detail)[:250]}\n```")
+    lines.append("")
+    lines.append(f"_{_ts()}_")
+    _send("\n".join(lines))
+
+
 def notify_shutdown(reason: str, balance: float, wins: int, losses: int):
     total = wins + losses
     wr    = f"{wins/total:.0%}" if total else "—"

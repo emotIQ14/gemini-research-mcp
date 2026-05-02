@@ -295,6 +295,8 @@ def run_supervisor():
 
     last_alive_check = time.time()
 
+    last_self_alert = 0  # rate-limit: max 1 self-error alert por hora
+
     while _RUNNING:
         try:
             time.sleep(5)
@@ -307,9 +309,36 @@ def run_supervisor():
                         p.maybe_restart()
                     except Exception as e:
                         _log(f"[{p.name}] Error en maybe_restart: {e}")
+                        # Alerta TG: el supervisor falló al gestionar un hijo
+                        if time.time() - last_self_alert > 3600:
+                            last_self_alert = time.time()
+                            try:
+                                _tg(
+                                    f"⚠️ *Supervisor — Error gestionando hijo*\n\n"
+                                    f"*Componente afectado:* {p.name}\n"
+                                    f"*Error:* `{_trim(str(e), 200)}`\n\n"
+                                    f"El supervisor sigue activo; reintentará en el próximo ciclo.\n\n"
+                                    f"_{_ts()}_"
+                                )
+                            except Exception:
+                                pass
 
         except Exception as e:
+            import traceback
+            tb = traceback.format_exc()[-400:]
             _log(f"[supervisor] Error en bucle principal: {e} — continuando")
+            # Alerta TG: el bucle del supervisor levantó excepción (rate-limited)
+            if time.time() - last_self_alert > 3600:
+                last_self_alert = time.time()
+                try:
+                    _tg(
+                        f"⚠️ *Supervisor — Error en bucle principal*\n\n"
+                        f"El bucle del supervisor levantó una excepción inesperada pero sigue corriendo.\n\n"
+                        f"*Traceback (cola):*\n```\n{_trim(tb, 350)}\n```\n\n"
+                        f"_{_ts()}_"
+                    )
+                except Exception:
+                    pass
             time.sleep(5)
 
     # Parada limpia

@@ -642,9 +642,26 @@ async def run_bridge():
                 else:
                     err = resp.get("error", resp.get("errorMsg", str(resp)))
                     print(f"  FAILED: {err}")
+                    # Alerta TG: el API rechazó la orden BUY
+                    _tg(
+                        f"❌ *Bridge — COMPRA RECHAZADA por Polymarket*\n\n"
+                        f"*Mercado:* {city} — {date}\n"
+                        f"*Rango:* {bucket}\n"
+                        f"*Precio intentado:* ${price:.3f} x {size} shares\n"
+                        f"*Error API:* `{str(err)[:200]}`\n\n"
+                        f"_{_ts()}_"
+                    )
 
             except Exception as e:
                 print(f"  ERROR: {e}")
+                # Alerta TG: la orden BUY excepcionó
+                _tg(
+                    f"❌ *Bridge — Excepción al ejecutar COMPRA*\n\n"
+                    f"*Mercado:* {city} — {date}\n"
+                    f"*Rango:* {bucket}\n"
+                    f"*Error:* `{str(e)[:200]}`\n\n"
+                    f"_{_ts()}_"
+                )
 
             await asyncio.sleep(1)
 
@@ -657,5 +674,29 @@ async def run_bridge():
     print(f"\n[{_ts()}] Cerrando bridge...")
 
 
+def _crash_alert(exc: Exception):
+    """Manda alerta crítica antes de morir cuando una excepción no manejada
+    escapa del bucle principal del bridge."""
+    import traceback
+    tb = traceback.format_exc()
+    try:
+        _tg(
+            f"🚨 *BRIDGE CAÍDO — Excepción no manejada*\n\n"
+            f"El motor de ejecución de órdenes ha CRASHED.\n"
+            f"*Error:* `{str(exc)[:200]}`\n\n"
+            f"*Traceback (cola):*\n```\n{tb[-400:]}\n```\n\n"
+            f"El supervisor lo reiniciará automáticamente.\n\n"
+            f"_{_ts()}_"
+        )
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
-    asyncio.run(run_bridge())
+    try:
+        asyncio.run(run_bridge())
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        _crash_alert(e)
+        raise

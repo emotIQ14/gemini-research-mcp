@@ -1582,6 +1582,10 @@ def run_loop():
     signal.signal(signal.SIGINT,  _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)
 
+    consecutive_scan_errors = 0
+    consecutive_monitor_errors = 0
+    last_error_alert = 0
+
     while _running:
         now_ts  = time.time()
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1595,12 +1599,38 @@ def run_loop():
                 print(f"  balance: ${state['balance']:,.2f} | "
                       f"new: {new_pos} | closed: {closed} | resolved: {resolved}")
                 last_full_scan = time.time()
-            except requests.exceptions.ConnectionError:
-                print(f"  Connection lost — waiting 60 sec")
+                consecutive_scan_errors = 0   # reset al éxito
+            except requests.exceptions.ConnectionError as e:
+                consecutive_scan_errors += 1
+                print(f"  Connection lost — waiting 60 sec (consecutive errors: {consecutive_scan_errors})")
+                # Alerta TG si llevamos 3+ errores de conexión seguidos (rate-limited cada 1h)
+                if consecutive_scan_errors >= 3 and time.time() - last_error_alert > 3600:
+                    last_error_alert = time.time()
+                    try:
+                        tg.notify_error(
+                            "weatherbot", "Conexión perdida",
+                            str(e), critical=False,
+                            context={"errores consecutivos": consecutive_scan_errors}
+                        )
+                    except Exception: pass
                 time.sleep(60)
                 continue
             except Exception as e:
-                print(f"  Error: {e} — waiting 60 sec")
+                consecutive_scan_errors += 1
+                import traceback as _tb
+                tb_tail = _tb.format_exc()[-300:]
+                print(f"  Error: {e} — waiting 60 sec (consecutive errors: {consecutive_scan_errors})")
+                # Alerta TG: cualquier excepción en el scan (rate-limited)
+                if time.time() - last_error_alert > 1800:
+                    last_error_alert = time.time()
+                    try:
+                        tg.notify_error(
+                            "weatherbot", "Excepción en full scan",
+                            tb_tail,
+                            critical=(consecutive_scan_errors >= 5),
+                            context={"errores consecutivos": consecutive_scan_errors}
+                        )
+                    except Exception: pass
                 time.sleep(60)
                 continue
         else:
@@ -1608,11 +1638,22 @@ def run_loop():
             print(f"[{now_str}] monitoring positions...")
             try:
                 stopped = monitor_positions()
+                consecutive_monitor_errors = 0
                 if stopped:
                     state = load_state()
                     print(f"  balance: ${state['balance']:,.2f}")
             except Exception as e:
+                consecutive_monitor_errors += 1
                 print(f"  Monitor error: {e}")
+                if consecutive_monitor_errors >= 3 and time.time() - last_error_alert > 3600:
+                    last_error_alert = time.time()
+                    try:
+                        tg.notify_error(
+                            "weatherbot", "Excepción en monitor",
+                            str(e), critical=False,
+                            context={"errores consecutivos": consecutive_monitor_errors}
+                        )
+                    except Exception: pass
 
         time.sleep(MONITOR_INTERVAL)
 
@@ -1620,15 +1661,37 @@ def run_loop():
 # CLI
 # =============================================================================
 
+def _crash_alert(exc: Exception):
+    """Alerta crítica antes de morir cuando una excepción no manejada
+    escapa del bucle principal. El supervisor reiniciará después."""
+    import traceback
+    tb = traceback.format_exc()
+    try:
+        tg.notify_error(
+            "weatherbot", "CAÍDO — Excepción no manejada",
+            tb[-400:], critical=True,
+            context={"error": str(exc)[:120]}
+        )
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "run"
-    if cmd == "run":
-        run_loop()
-    elif cmd == "status":
-        _cal = load_cal()
-        print_status()
-    elif cmd == "report":
-        _cal = load_cal()
-        print_report()
-    else:
-        print("Usage: python weatherbet.py [run|status|report]")
+    try:
+        if cmd == "run":
+            run_loop()
+        elif cmd == "status":
+            _cal = load_cal()
+            print_status()
+        elif cmd == "report":
+            _cal = load_cal()
+            print_report()
+        else:
+            print("Usage: python weatherbet.py [run|status|report]")
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        if cmd == "run":
+            _crash_alert(e)
+        raise
