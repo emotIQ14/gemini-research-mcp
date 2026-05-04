@@ -351,15 +351,50 @@ def run_supervisor():
 
 
 def stop_supervisor():
-    if not PID_FILE.exists():
-        print("No hay supervisor corriendo (no se encontró logs/supervisor.pid)")
-        return
-    pid = int(PID_FILE.read_text().strip())
+    """Para el supervisor + TODOS sus hijos (evita huérfanos en Windows).
+
+    En Windows, SIGTERM mata el supervisor inmediatamente sin darle tiempo
+    a llamar p.stop() sobre los hijos. Por eso aquí matamos manualmente
+    el árbol completo (taskkill /T /F) y luego limpiamos PIDs huérfanos
+    por nombre de script si quedaran.
+    """
+    pid = None
+    if PID_FILE.exists():
+        try:
+            pid = int(PID_FILE.read_text().strip())
+        except (ValueError, OSError):
+            pass
+
+    # 1. Matar el árbol completo del supervisor (incluye hijos)
+    if pid:
+        try:
+            subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"],
+                           capture_output=True, timeout=10)
+            print(f"Supervisor (PID {pid}) y sus hijos detenidos.")
+        except Exception as e:
+            print(f"Aviso: taskkill /T falló: {e}")
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+
+    # 2. Defensivo: matar cualquier huérfano residual por nombre de script
     try:
-        os.kill(pid, signal.SIGTERM)
-        print(f"Supervisor (PID {pid}) detenido.")
-    except ProcessLookupError:
-        print(f"Proceso {pid} no encontrado.")
+        r = subprocess.run(
+            'wmic process where "name like \'python%\'" get ProcessId,CommandLine /FORMAT:CSV',
+            shell=True, capture_output=True, text=True, timeout=10
+        )
+        for line in r.stdout.splitlines():
+            if any(s in line for s in ["bot_v2.py", "weatherbot_bridge.py"]):
+                parts = line.split(",")
+                if len(parts) >= 4:
+                    p = parts[3].strip()
+                    if p.isdigit():
+                        subprocess.run(["taskkill", "/PID", p, "/F"],
+                                       capture_output=True, timeout=5)
+    except Exception:
+        pass
+
     if PID_FILE.exists():
         PID_FILE.unlink()
 

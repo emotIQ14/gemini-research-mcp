@@ -98,20 +98,98 @@ def start_supervisor():
     return result.returncode == 0, result.stdout.strip()
 
 
-def main():
-    if supervisor_alive():
-        pid = int(PID_FILE.read_text().strip())
-        log(f"OK — Supervisor activo (PID {pid})")
-        return
+def logs_stale() -> tuple:
+    """Detecta si bot_v2 o bridge están COLGADOS (vivos pero sin escribir).
 
-    # Supervisor caído → alerta INMEDIATA + intento de reinicio
-    log("ALERTA — Supervisor caido. Reiniciando...")
-    tg(
-        f"🔴 *WeatherBet — Supervisor CAIDO*\n\n"
-        f"El proceso supervisor ha muerto silenciosamente.\n"
-        f"El watchdog está intentando relanzarlo automáticamente ahora.\n\n"
-        f"_{ts()}_"
-    )
+    Retorna (stale: bool, detail: str).
+    Considera stale si el log no se ha actualizado en >5 min (el bridge
+    escribe cada 60s "Esperando 60s..."; el weatherbot al menos cada 10
+    min en el ciclo de monitor).
+    """
+    import time
+    bridge_log     = BASE / "logs" / "bridge.log"
+    weatherbot_log = BASE / "logs" / "weatherbot.log"
+    now = time.time()
+    detail = []
+    stale = False
+    for name, p in [("bridge", bridge_log), ("weatherbot", weatherbot_log)]:
+        if not p.exists():
+            continue
+        age_s = now - p.stat().st_mtime
+        # Bridge debería escribir cada 60s. Si lleva >300s sin actividad → colgado.
+        # weatherbot escribe en cada monitor (10 min) → si lleva >900s → colgado.
+        threshold = 300 if name == "bridge" else 900
+        if age_s > threshold:
+            stale = True
+            detail.append(f"{name} log sin actividad hace {age_s:.0f}s (umbral {threshold}s)")
+    return stale, " | ".join(detail)
+
+
+def force_restart_hung():
+    """Mata supervisor + hijos colgados y los relanza."""
+    # 1. Leer PID del supervisor y matar TODO el árbol
+    try:
+        if PID_FILE.exists():
+            sup_pid = int(PID_FILE.read_text().strip())
+            subprocess.run(["taskkill", "/PID", str(sup_pid), "/T", "/F"],
+                           capture_output=True, timeout=8)
+    except Exception:
+        pass
+
+    # 2. Matar hijos huérfanos por nombre (bot_v2.py, weatherbot_bridge.py)
+    try:
+        r = subprocess.run(
+            'wmic process where "name like \'python%\'" get ProcessId,CommandLine /FORMAT:CSV',
+            shell=True, capture_output=True, text=True, timeout=10
+        )
+        for line in r.stdout.splitlines():
+            if any(s in line for s in ["bot_v2.py", "weatherbot_bridge.py"]):
+                parts = line.split(",")
+                if len(parts) >= 4:
+                    pid = parts[3].strip()
+                    if pid.isdigit():
+                        subprocess.run(["taskkill", "/PID", pid, "/F"],
+                                       capture_output=True, timeout=5)
+    except Exception:
+        pass
+
+    # 3. Esperar y limpiar PID file
+    import time
+    time.sleep(2)
+    try:
+        PID_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def main():
+    # Caso 1: supervisor caído (PID muerto)
+    if not supervisor_alive():
+        log("ALERTA — Supervisor caido. Reiniciando...")
+        tg(
+            f"🔴 *WeatherBet — Supervisor CAIDO*\n\n"
+            f"El proceso supervisor ha muerto silenciosamente.\n"
+            f"El watchdog está intentando relanzarlo automáticamente ahora.\n\n"
+            f"_{ts()}_"
+        )
+    else:
+        # Caso 2: supervisor vivo pero hijos colgados (no escriben logs)
+        stale, detail = logs_stale()
+        if not stale:
+            pid = int(PID_FILE.read_text().strip())
+            log(f"OK — Supervisor activo (PID {pid})")
+            return
+
+        # Hijos colgados → reinicio forzado
+        log(f"ALERTA — Bot COLGADO ({detail}). Forzando reinicio...")
+        tg(
+            f"🟠 *WeatherBet — Bot COLGADO*\n\n"
+            f"Los procesos están vivos pero no escriben en los logs:\n"
+            f"_{detail}_\n\n"
+            f"El watchdog está forzando reinicio del árbol completo.\n\n"
+            f"_{ts()}_"
+        )
+        force_restart_hung()
 
     ok, out = start_supervisor()
     if ok:
