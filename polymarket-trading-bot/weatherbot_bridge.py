@@ -131,6 +131,35 @@ def get_real_shares(client: ClobClient, clob_token: str) -> float:
         return 0.0
 
 
+# Polymarket migró su collateral a su propio token "Polymarket USD (pUSD)"
+# en lugar de USDC.e. La librería py_clob_client puede no detectarlo, así que
+# leemos el balance directamente on-chain.
+PUSD_CONTRACT = "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb"
+POLYGON_RPCS  = [
+    "https://polygon-bor-rpc.publicnode.com",
+    "https://rpc.ankr.com/polygon",
+    "https://polygon.llamarpc.com",
+]
+
+def get_pusd_balance() -> float:
+    """Lee el balance de pUSD del Safe directamente on-chain. Es la fuente
+    de verdad para 'cuánto puede comprar' el bridge."""
+    for rpc in POLYGON_RPCS:
+        try:
+            r = _req.post(rpc, json={
+                "jsonrpc":"2.0","method":"eth_call",
+                "params":[{
+                    "to": PUSD_CONTRACT,
+                    "data": "0x70a08231" + SAFE_ADDRESS[2:].zfill(64)
+                }, "latest"], "id":1
+            }, timeout=8).json()
+            if "result" in r and r["result"]:
+                return int(r["result"], 16) / 10**6
+        except Exception:
+            continue
+    return 0.0
+
+
 def build_clob_client() -> ClobClient:
     """Crea cliente oficial de Polymarket CLOB con creds L2 derivadas."""
     c0 = ClobClient(
@@ -304,8 +333,16 @@ async def run_bridge():
                     for city, date, entry in sorted(open_pos, key=lambda x: x[1])
                 ) or "  Ninguna por el momento"
 
+                # Saldo REAL on-chain en pUSD (el token que Polymarket usa ahora)
+                try:
+                    pusd_bal = get_pusd_balance()
+                    saldo_line = f"*Saldo disponible:* ${pusd_bal:.2f} pUSD\n\n"
+                except Exception:
+                    saldo_line = ""
+
                 _tg(
                     f"✅ *Sistema funcionando correctamente*\n\n"
+                    f"{saldo_line}"
                     f"*Posiciones abiertas:* {len(open_pos)}\n"
                     f"{pos_lines}\n\n"
                     f"*Ventas ejecutadas (total):* {sells_ok}\n"
