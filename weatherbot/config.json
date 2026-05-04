@@ -1,20 +1,21 @@
 {
+  "_recovery_mode_comment": "Modo recuperacion con $132 capital real: filtros mas selectivos que la version inicial. min_ev sube a 0.12, max_price baja a 0.40 (evita zona muerta), max_bet baja a 8 paper para alinear con $3 reales del bridge",
   "balance": 10000.0,
-  "max_bet": 20.0,
-  "min_ev": 0.1,
-  "max_price": 0.45,
-  "min_volume": 500,
+  "max_bet": 8.0,
+  "min_ev": 0.12,
+  "max_price": 0.40,
+  "min_volume": 800,
   "min_hours": 2.0,
-  "max_hours": 72.0,
-  "kelly_fraction": 0.25,
+  "max_hours": 60.0,
+  "kelly_fraction": 0.20,
   "scan_interval": 3600,
   "calibration_min": 30,
   "vc_key": "YOUR_KEY_HERE",
   "max_slippage": 0.03,
 
-  "_hc_comment": "High-confidence ensemble: triggered when 4-5 global models agree tightly AND Polymarket price is lagging",
-  "high_conf_max_bet": 15.0,
-  "high_conf_agreement": 0.70,
-  "high_conf_min_market_lag": 0.10,
-  "high_conf_min_prob": 0.55
+  "_hc_comment": "High-confidence ensemble: triggered when 4-6 global models agree tightly AND Polymarket price is lagging. HC sube a $10 max para alinear con el capital real ($132).",
+  "high_conf_max_bet": 10.0,
+  "high_conf_agreement": 0.75,
+  "high_conf_min_market_lag": 0.12,
+  "high_conf_min_prob": 0.60
 }

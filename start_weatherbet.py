@@ -28,6 +28,37 @@ def is_running(pid: int) -> bool:
         return False
 
 
+def _kill_orphan_children():
+    """Antes de arrancar un supervisor nuevo, matar cualquier bot_v2.py o
+    weatherbot_bridge.py huerfano (de un supervisor anterior que murio
+    pero dejo a sus hijos zombies). Si no se hace esto, cada restart
+    deja 1-2 zombies acumulados.
+    """
+    try:
+        r = subprocess.run(
+            'wmic process where "name like \'python%\'" get ProcessId,CommandLine /FORMAT:CSV',
+            shell=True, capture_output=True, text=True, timeout=10,
+        )
+        killed = 0
+        for line in r.stdout.splitlines():
+            if any(s in line for s in ["bot_v2.py", "weatherbot_bridge.py"]):
+                parts = line.split(",")
+                if len(parts) >= 4:
+                    pid = parts[3].strip()
+                    if pid.isdigit():
+                        k = subprocess.run(
+                            ["taskkill", "/PID", pid, "/F"],
+                            capture_output=True, timeout=5,
+                        )
+                        if k.returncode == 0:
+                            killed += 1
+        if killed:
+            print(f"Limpieza previa: {killed} hijo(s) huerfano(s) eliminado(s).")
+        return killed
+    except Exception:
+        return 0
+
+
 def start():
     # Comprobar si ya hay un supervisor corriendo
     if PID_FILE.exists():
@@ -38,6 +69,9 @@ def start():
                 return pid
         except (ValueError, OSError):
             PID_FILE.unlink(missing_ok=True)  # PID file corrupto, ignorar
+
+    # CRITICO: limpiar hijos huerfanos antes de arrancar el supervisor nuevo
+    _kill_orphan_children()
 
     # Lanzar supervisor desacoplado del proceso actual
     proc = subprocess.Popen(
