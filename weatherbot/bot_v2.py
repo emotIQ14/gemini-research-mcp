@@ -1114,17 +1114,15 @@ def scan_and_update():
                     if spread > 0.05 or bid <= 0.02:
                         continue
 
-                    # ── MID-PRICE TRAP FILTER ─────────────────────────────
-                    # Análisis forense: el rango $0.20-$0.30 tiene el peor PnL
-                    # (-$7.16/trade) en 31 trades históricos. Es la "zona
-                    # muerta": el mercado ya descuenta parcialmente la señal
-                    # y cualquier ruido nos saca en pérdida. Saltamos este
-                    # rango salvo que la ventaja sea muy alta (EV >= 25%).
-                    if 0.20 <= ask < 0.30:
-                        # Calcular EV provisional para decidir
+                    # ── MID-PRICE TRAP FILTER (suavizado) ─────────────────
+                    # Aprendizaje: el filtro original era demasiado severo
+                    # combinado con el resto, y nos dejó 63 scans sin BUYs
+                    # tras la calibración. Lo suavizamos: rango muerto reducido
+                    # a $0.22-$0.28, EV requerido baja a 0.18 (vs 0.25).
+                    if 0.22 <= ask <= 0.28:
                         p_provisional = bucket_prob(forecast_temp, t_low, t_high, sigma)
                         ev_provisional = calc_ev(p_provisional, ask)
-                        if ev_provisional < 0.25:
+                        if ev_provisional < 0.18:
                             continue   # zona muerta sin ventaja suficiente
 
                     # All filters — if any fails, skip this market entirely

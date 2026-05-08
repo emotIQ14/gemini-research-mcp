@@ -1,21 +1,21 @@
 {
-  "_recovery_mode_comment": "Modo recuperacion v2: relajado tras observar 7 scans sin senales. min_ev vuelve a 0.10 (city ev_mult ya endurece selectivamente), max_price 0.42 (un pelin mas permisivo), min_volume 600 (mercados weather no siempre tienen $800 de volumen), max_bet 8 paper alineado con $3 real",
+  "_recovery_mode_comment": "Modo recuperacion v3: tras 63 scans sin BUYs en 3 dias confirmamos que las condiciones de mercado actual + filtros v2 eran incompatibles. Aflojamos: max_price 0.48 (mercados con weather forecast claro suelen estar en $0.40-0.50), min_volume 400 (muchos mercados weather mayo tienen $400-600), kelly_fraction 0.25 (vuelve al base). Death-zone reducida a $0.22-0.28 con EV>=0.18.",
   "balance": 10000.0,
   "max_bet": 8.0,
-  "min_ev": 0.10,
-  "max_price": 0.42,
-  "min_volume": 600,
+  "min_ev": 0.08,
+  "max_price": 0.48,
+  "min_volume": 400,
   "min_hours": 2.0,
   "max_hours": 60.0,
-  "kelly_fraction": 0.22,
+  "kelly_fraction": 0.25,
   "scan_interval": 3600,
   "calibration_min": 30,
   "vc_key": "YOUR_KEY_HERE",
-  "max_slippage": 0.03,
+  "max_slippage": 0.04,
 
-  "_hc_comment": "High-confidence: $10 max, 4 modelos minimos de acuerdo, price lag 0.10, prob 0.58.",
+  "_hc_comment": "High-confidence: $10 max, agreement 0.70, lag 0.10, prob 0.55. Baja un pelin para que se active mas.",
   "high_conf_max_bet": 10.0,
-  "high_conf_agreement": 0.72,
+  "high_conf_agreement": 0.70,
   "high_conf_min_market_lag": 0.10,
-  "high_conf_min_prob": 0.58
+  "high_conf_min_prob": 0.55
 }
