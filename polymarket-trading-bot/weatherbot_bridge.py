@@ -596,6 +596,15 @@ async def run_bridge():
             # Justo antes de mandar la orden, re-consultamos el order book para
             # detectar movimientos bruscos (el bot decidió con datos de hace
             # 1+ min; si el precio saltó mucho, mejor abortar que pagar slippage).
+            #
+            # MAX_PRICE leído del config dinámicamente para evitar drift entre
+            # weatherbot/config.json (max_price) y este threshold hardcodeado.
+            try:
+                _cfg_path = Path(__file__).parent.parent / "weatherbot" / "config.json"
+                _wb_cfg = json.loads(_cfg_path.read_text(encoding="utf-8"))
+                MAX_PRICE_LIVE = float(_wb_cfg.get("max_price", 0.48))
+            except Exception:
+                MAX_PRICE_LIVE = 0.48
             try:
                 rr = _req.get(
                     f"https://gamma-api.polymarket.com/markets/{market_id}",
@@ -607,17 +616,17 @@ async def run_bridge():
                 live_spread = round(live_ask - live_bid, 4)
                 drift = round(abs(live_ask - price) / max(price, 0.001), 3)
 
-                # Abortar si: el ask saltó >20% respecto al precio que valoró el bot
-                #          o el spread en vivo es excesivo (>8c)
-                #          o el ask está en ≥0.45 (ya no cumple MAX_PRICE)
-                if drift > 0.20 or live_spread > 0.08 or live_ask >= 0.45:
-                    print(f"  [PRE-EXEC ABORT] live_ask=${live_ask:.3f} (drift {drift:+.0%}), spread=${live_spread:.3f}")
+                # Abortar si: el ask saltó >25% respecto al precio que valoró el bot
+                #          o el spread en vivo es excesivo (>10c)
+                #          o el ask supera MAX_PRICE leído del config
+                if drift > 0.25 or live_spread > 0.10 or live_ask > MAX_PRICE_LIVE:
+                    print(f"  [PRE-EXEC ABORT] live_ask=${live_ask:.3f} (drift {drift:+.0%}), spread=${live_spread:.3f}, max=${MAX_PRICE_LIVE}")
                     bridge["placed_orders"][market_id] = {
                         "order_id": "aborted_preexec",
                         "clob_token": clob_token,
                         "size": 0,
                         "price": price,
-                        "reason": "price_drift" if drift > 0.20 else "spread_too_wide",
+                        "reason": "price_drift" if drift > 0.25 else ("spread_too_wide" if live_spread > 0.10 else "above_max_price"),
                     }
                     bridge["closed_orders"][market_id] = "aborted_preexec"
                     save_bridge_state(bridge)
