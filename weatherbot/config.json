@@ -3,7 +3,7 @@
   "balance": 10000.0,
   "max_bet": 8.0,
   "min_ev": 0.10,
-  "max_price": 0.60,
+  "max_price": 0.65,
   "min_volume": 200,
   "min_hours": 2.0,
   "max_hours": 60.0,
