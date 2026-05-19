@@ -1088,13 +1088,18 @@ def scan_and_update():
                     continue
 
                 # Find exactly ONE bucket that matches the forecast
-                # If forecast doesn't fit any bucket cleanly — skip this market
+                # If forecast doesn't fit any bucket cleanly — log y skip
                 matched_bucket = None
                 for o in outcomes:
                     t_low, t_high = o["range"]
                     if in_bucket(forecast_temp, t_low, t_high):
                         matched_bucket = o
                         break
+
+                if not matched_bucket:
+                    # Logging diagnóstico: ¿qué buckets había vs forecast?
+                    bucket_str = ", ".join(f"{o['range'][0]}-{o['range'][1]}" for o in outcomes[:5])
+                    print(f"  [NO-MATCH] {loc['name']} {date} fc={forecast_temp} buckets=[{bucket_str}{'...' if len(outcomes)>5 else ''}]")
 
                 if matched_bucket:
                     o = matched_bucket
@@ -1105,35 +1110,52 @@ def scan_and_update():
                     spread = o.get("spread", 0)
 
                     # Load adaptive params (updated each cycle by run_learning)
-                    # Per-city ev_multiplier → sube el umbral en ciudades volátiles
                     eff_min_ev = (_adp.get("min_ev") or MIN_EV) * _ev_mult
                     kelly_scale = _adp.get("kelly_scale", {}).get(city_slug, 1.0)
 
-                    # ── LIQUIDITY FILTER ──────────────────────────────────
-                    # Rechazar mercados con spread >5c o bid ≤ 0.02 (ilíquidos)
-                    if spread > 0.05 or bid <= 0.02:
+                    # ── LIQUIDITY FILTER (sin spread, lo mide el bridge) ──
+                    # NOTA: 'spread' aqui es YES_price - NO_price del outcomePrices,
+                    # NO el bid-ask del order book real. En mercados Polymarket cerca
+                    # de resolucion, esa diferencia siempre es enorme (0.40-0.90) y
+                    # bloqueaba TODO. El bridge tiene su propio check con bestBid/bestAsk
+                    # reales antes de mandar la orden (pre-execution validation).
+                    # Aqui solo descartamos mercados completamente ilíquidos del YES.
+                    if bid <= 0.02 and ask <= 0.02:
+                        print(f"  [FILT-LIQ] {loc['name']} {date} bucket={t_low}-{t_high} ask=${ask:.3f} (sin liquidez)")
                         continue
 
                     # ── MID-PRICE TRAP FILTER (suavizado) ─────────────────
-                    # Aprendizaje: el filtro original era demasiado severo
-                    # combinado con el resto, y nos dejó 63 scans sin BUYs
-                    # tras la calibración. Lo suavizamos: rango muerto reducido
-                    # a $0.22-$0.28, EV requerido baja a 0.18 (vs 0.25).
                     if 0.22 <= ask <= 0.28:
                         p_provisional = bucket_prob(forecast_temp, t_low, t_high, sigma)
                         ev_provisional = calc_ev(p_provisional, ask)
                         if ev_provisional < 0.18:
-                            continue   # zona muerta sin ventaja suficiente
+                            print(f"  [FILT-DEADZONE] {loc['name']} {date} ask=${ask:.3f} EV={ev_provisional:.3f}<0.18")
+                            continue
 
-                    # All filters — if any fails, skip this market entirely
-                    if volume >= MIN_VOLUME:
+                    # ── PRECIO MÁXIMO ─────────────────────────────────────
+                    if ask >= MAX_PRICE:
+                        print(f"  [FILT-PRICE] {loc['name']} {date} ask=${ask:.3f}>=max ${MAX_PRICE}")
+                        continue
+
+                    # ── VOLUMEN MÍNIMO ────────────────────────────────────
+                    if volume < MIN_VOLUME:
+                        print(f"  [FILT-VOL] {loc['name']} {date} vol=${volume:.0f}<${MIN_VOLUME}")
+                        continue
+
+                    # All filters passed — proceed to EV check
+                    if True:
                         p  = bucket_prob(forecast_temp, t_low, t_high, sigma)
                         ev = calc_ev(p, ask)
+                        if ev < eff_min_ev:
+                            print(f"  [FILT-EV] {loc['name']} {date} EV={ev:.3f}<{eff_min_ev:.3f} (city ev_mult={_ev_mult})")
+                            continue
                         if ev >= eff_min_ev:
                             kelly = round(calc_kelly(p, ask) * kelly_scale, 4)
                             size  = bet_size(kelly, balance)
-                            # Aplicar size_multiplier por ciudad (volátiles → más pequeño)
                             size  = round(size * _size_mult, 2)
+                            if size < 0.50:
+                                print(f"  [FILT-SIZE] {loc['name']} {date} size=${size:.2f}<$0.50 (kelly={kelly} size_mult={_size_mult})")
+                                continue
                             if size >= 0.50:
                                 # ── HIGH CONFIDENCE check ─────────────────────
                                 # Ensemble agrees AND market price is lagging

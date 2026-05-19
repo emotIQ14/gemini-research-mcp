@@ -4,7 +4,7 @@
   "max_bet": 8.0,
   "min_ev": 0.08,
   "max_price": 0.48,
-  "min_volume": 400,
+  "min_volume": 200,
   "min_hours": 2.0,
   "max_hours": 60.0,
   "kelly_fraction": 0.25,
