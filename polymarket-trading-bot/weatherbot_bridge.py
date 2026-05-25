@@ -36,6 +36,19 @@ from py_clob_client.client import ClobClient
 from py_clob_client.clob_types import OrderArgs, BalanceAllowanceParams
 from py_clob_client.constants import POLYGON
 
+# ─────────────────────────────────────────────────────────────────────────────
+# BUG CONOCIDO DEL SDK (py-clob-client 0.34.6):
+# Polymarket actualizó el formato de orden y la SDK actual produce firmas que
+# el backend rechaza con {"error":"order_version_mismatch"}. Hemos probado todas
+# las combinaciones razonables (name del EIP-712 domain, version, neg_risk
+# explícito, etc.) sin éxito. El bug requiere una actualización oficial del SDK.
+#
+# Mientras tanto, el bridge opera en MODO ALERT-ONLY: detecta cada señal del
+# weatherbot y manda una alerta accionable a Telegram con link directo al mercado
+# de Polymarket UI, donde el usuario sí puede ejecutar la orden en 1 click.
+# ─────────────────────────────────────────────────────────────────────────────
+SDK_BROKEN = True   # Cambiar a False cuando Polymarket libere v0.35+ del SDK
+
 # ── Config ────────────────────────────────────────────────────────────────────
 PRIVATE_KEY       = os.environ["POLY_PRIVATE_KEY"]
 MAX_BET           = float(os.getenv("BRIDGE_MAX_BET", "5.0"))
@@ -641,6 +654,46 @@ async def run_bridge():
                     size = max(size, MIN_SHARES)
             except Exception as e:
                 print(f"  [PRE-EXEC] warn: no se pudo verificar precio en vivo: {e}")
+
+            # ── MODO ALERT-ONLY (cuando el SDK está roto) ────────────────────
+            # Si SDK_BROKEN=True, en lugar de mandar la orden mando a Telegram
+            # un aviso con link directo al mercado para ejecución manual.
+            if SDK_BROKEN:
+                # Construir slug del evento para link a Polymarket UI
+                slug_city = city.lower().replace(' ', '-').replace('(','').replace(')','')
+                date_url  = date.replace('-', '-')
+                hc_line = ""
+                if is_high_conf and ens_agree is not None:
+                    hc_line = (
+                        f"\n⚡ *ALTA CONFIANZA* — {pos.get('ensemble_models','?')} modelos coinciden\n"
+                        f"*Acuerdo:* {ens_agree:.0%} | *Ventaja:* {mkt_lag:+.0%}"
+                    )
+                cost_usd = round(size * price, 2)
+                _tg(
+                    f"{'⚡ ' if is_high_conf else ''}🎯 *OPORTUNIDAD DETECTADA — Ejecutar manualmente*\n"
+                    f"_(SDK Polymarket bug en formato de orden, ejecutar en UI)_\n\n"
+                    f"*Mercado:* {city} — {date}\n"
+                    f"*Rango:* {bucket}\n"
+                    f"*Precio sugerido:* ${price:.3f}\n"
+                    f"*Cantidad sugerida:* {size} shares ≈ *${cost_usd:.2f} USDC*\n"
+                    f"*Valor esperado (EV):* {ev:+.2f}"
+                    f"{hc_line}\n\n"
+                    f"👉 *Abrir mercado:* https://polymarket.com/markets/{market_id}\n\n"
+                    f"_{_ts()}_"
+                )
+                # Marcar como "alerted" para no repetir
+                bridge["placed_orders"][market_id] = {
+                    "order_id":   "alert_only",
+                    "clob_token": clob_token,
+                    "size":       size,
+                    "price":      price,
+                    "high_conf":  is_high_conf,
+                    "alert_only": True,
+                }
+                save_bridge_state(bridge)
+                print(f"  [ALERT-ONLY] {city} {date} señal enviada a Telegram (SDK roto)")
+                await asyncio.sleep(1)
+                continue
 
             try:
                 order_args = OrderArgs(
