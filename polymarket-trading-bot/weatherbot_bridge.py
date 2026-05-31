@@ -37,17 +37,34 @@ from py_clob_client.clob_types import OrderArgs, BalanceAllowanceParams
 from py_clob_client.constants import POLYGON
 
 # ─────────────────────────────────────────────────────────────────────────────
-# BUG CONOCIDO DEL SDK (py-clob-client 0.34.6):
-# Polymarket actualizó el formato de orden y la SDK actual produce firmas que
-# el backend rechaza con {"error":"order_version_mismatch"}. Hemos probado todas
-# las combinaciones razonables (name del EIP-712 domain, version, neg_risk
-# explícito, etc.) sin éxito. El bug requiere una actualización oficial del SDK.
+# CAUSA RAÍZ CONFIRMADA (investigado a nivel de contrato on-chain, 2026-05-31):
 #
-# Mientras tanto, el bridge opera en MODO ALERT-ONLY: detecta cada señal del
-# weatherbot y manda una alerta accionable a Telegram con link directo al mercado
-# de Polymarket UI, donde el usuario sí puede ejecutar la orden en 1 click.
+# Polymarket migró su Exchange a un contrato NUEVO v2:
+#   0xe2222d279d744050d28e00520010520000310f59
+#   eip712Domain(): name="Polymarket CTF Exchange", version="2", chainId=137
+#
+# La SDK py-clob-client 0.34.6 firma órdenes para los contratos VIEJOS
+# (0x4bFb... estándar, 0xC5d5... neg-risk) con domain version="1". El backend
+# rechaza esas firmas con {"error":"order_version_mismatch"}.
+#
+# Probado sin éxito (todo da el mismo error):
+#   - Patch del exchange address al nuevo 0xe222... + domain version "2"
+#   - 8 variantes de domain name, versiones 1 y 2
+#   - neg_risk explícito True/False, builder auth on/off, feeRateBps 0 y 1000
+# El contrato v2 cambió además la estructura/tipos de la orden, lo que requiere
+# una actualización OFICIAL del SDK (o reimplementar el firmado v2, que con
+# dinero real es demasiado arriesgado a ciegas).
+#
+# Verificado: las operaciones en la UI de Polymarket SÍ funcionan (usan el
+# cliente TypeScript actualizado que ya soporta v2). El trade manual del
+# usuario (Spain WC, 4-may) pasó por 0xe222... correctamente.
+#
+# MODO ALERT-ONLY: el bridge detecta cada señal y manda alerta accionable a
+# Telegram con link directo al mercado, para ejecución manual en 1 click.
+# Cuando salga py-clob-client v0.35+ con soporte v2: pip install --upgrade,
+# poner SDK_BROKEN=False y reiniciar → vuelve la auto-ejecución.
 # ─────────────────────────────────────────────────────────────────────────────
-SDK_BROKEN = True   # Cambiar a False cuando Polymarket libere v0.35+ del SDK
+SDK_BROKEN = True   # False cuando py-clob-client soporte el Exchange v2
 
 # ── Config ────────────────────────────────────────────────────────────────────
 PRIVATE_KEY       = os.environ["POLY_PRIVATE_KEY"]
