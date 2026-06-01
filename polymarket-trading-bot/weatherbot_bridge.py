@@ -471,6 +471,42 @@ async def run_bridge():
                 # Floor (no round) para nunca pedir más shares de las que tenemos
                 sell_shares = math.floor(real_shares * 100) / 100
 
+                # ── MODO ALERT-ONLY para VENTAS (cuando el SDK está roto) ────
+                # El stop-loss / trailing / forecast-changed / take-profit deben
+                # poder SALIR aunque el SDK no pueda firmar la orden v2. En lugar
+                # de fallar silenciosamente (acumulando sell_errors), avisamos a
+                # Telegram con URGENCIA para que el usuario venda manualmente YA.
+                if SDK_BROKEN:
+                    reason_labels_alert = {
+                        "take_profit":          "🎯 TAKE PROFIT",
+                        "take_profit_2x":       "🎯 TAKE PROFIT (≥100% ganancia)",
+                        "take_profit_near_win": "🎯 TAKE PROFIT (casi ganador)",
+                        "take_profit_end":      "🎯 TAKE PROFIT (cierre con ≥50%)",
+                        "stop_loss":            "🛑 STOP LOSS — cortar pérdida",
+                        "trailing_stop":        "🛑 TRAILING STOP",
+                        "forecast_changed":     "🌦️ PREVISIÓN CAMBIÓ — salir",
+                        "pre_resolution_close": "⏰ CIERRE PRE-RESOLUCIÓN",
+                    }
+                    motivo = reason_labels_alert.get(close_reason, close_reason)
+                    entry  = pos.get("entry_price", sell_price)
+                    urgente = close_reason in ("stop_loss", "trailing_stop", "forecast_changed")
+                    _tg(
+                        f"{'🚨🚨 ' if urgente else ''}*VENDER MANUALMENTE — {motivo}*\n"
+                        f"_(SDK v2 bug: ejecutar venta en la UI ahora)_\n\n"
+                        f"*Mercado:* {city} — {date}\n"
+                        f"*Entrada:* ${entry:.3f} → *Vender a:* ${sell_price:.3f}\n"
+                        f"*Cantidad:* {sell_shares} shares\n"
+                        f"*Motivo:* {motivo}\n\n"
+                        f"👉 https://polymarket.com/markets/{market_id}\n\n"
+                        f"_{_ts()}_"
+                    )
+                    bridge["closed_orders"][market_id] = "sell_alert_only"
+                    bridge["sell_errors"].pop(market_id, None)
+                    save_bridge_state(bridge)
+                    print(f"  [SELL-ALERT-ONLY] {city} {date} motivo={close_reason} → Telegram (SDK roto)")
+                    await asyncio.sleep(1)
+                    continue
+
                 print(f"[{_ts()}] CERRANDO {city} {date} | motivo={close_reason} | ${sell_price:.3f} x {sell_shares} (balance real)")
                 try:
                     order_args = OrderArgs(
