@@ -75,6 +75,7 @@ SDK_BROKEN = True   # False cuando py-clob-client soporte el Exchange v2
 # la cuenta, las órdenes se ejecutarán solas SIN cambiar nada.
 import subprocess as _sp
 TS_EXECUTOR = Path(__file__).parent / "ts_executor" / "executor.js"
+RETRY_INTERVAL = int(os.getenv("BRIDGE_RETRY_SECONDS", "180"))  # reintento cola cada 3 min
 
 def ts_execute(side: str, token_id: str, price: float, size: float) -> dict:
     """Ejecuta una orden real vía el cliente TS. Devuelve dict con ok/error."""
@@ -143,6 +144,7 @@ def load_bridge_state() -> dict:
     state.setdefault("placed_orders", {})   # market_id → {order_id, clob_token, size, price}
     state.setdefault("closed_orders", {})   # market_id → sell_order_id | "resolved"
     state.setdefault("sell_errors", {})     # market_id → {count, last_error}
+    state.setdefault("retry_queue", {})     # market_id → {params orden + last_retry} (reintento auto v2)
     return state
 
 
@@ -413,6 +415,60 @@ async def run_bridge():
             except Exception as e:
                 print(f"[{_ts()}] Error en heartbeat: {e}")
 
+        # ── REINTENTO AUTOMÁTICO de la cola (autonomía v2) ───────────────────
+        # Reintenta órdenes que fallaron por la migración v2 de Polymarket.
+        # Sin re-alertar; revalida precio en vivo; expira las caducadas. En cuanto
+        # la cuenta migre server-side, la primera oportunidad pendiente entra sola.
+        for mid in list(bridge.get("retry_queue", {}).keys()):
+            rq = bridge["retry_queue"][mid]
+            # Saltar si ya se colocó o cerró por otra vía
+            if mid in bridge["placed_orders"] or mid in bridge["closed_orders"]:
+                del bridge["retry_queue"][mid]; save_bridge_state(bridge); continue
+            # Throttle por entrada
+            if now_epoch - rq.get("last_retry", 0) < RETRY_INTERVAL:
+                continue
+            rq["last_retry"] = now_epoch
+            # Revalidar mercado: precio en vivo dentro de límites y aún activo
+            try:
+                md = _req.get(f"https://gamma-api.polymarket.com/markets/{mid}", timeout=(3,6)).json()
+                if md.get("closed") or not md.get("active"):
+                    print(f"  [RETRY-EXPIRA] {rq.get('city')} {rq.get('date')} mercado cerrado")
+                    bridge["closed_orders"][mid] = "retry_expired"
+                    del bridge["retry_queue"][mid]; save_bridge_state(bridge); continue
+                live_ask = float(md.get("bestAsk", rq["price"]))
+                try:
+                    _wb = json.loads((Path(__file__).parent.parent/"weatherbot"/"config.json").read_text(encoding="utf-8"))
+                    maxp = float(_wb.get("max_price", 0.48))
+                except Exception: maxp = 0.48
+                if live_ask > maxp or live_ask < 0.02:
+                    # Oportunidad ya no válida → expira silenciosamente
+                    print(f"  [RETRY-EXPIRA] {rq.get('city')} {rq.get('date')} ask=${live_ask:.3f} fuera de rango")
+                    bridge["closed_orders"][mid] = "retry_expired_price"
+                    del bridge["retry_queue"][mid]; save_bridge_state(bridge); continue
+                use_price = min(live_ask, maxp)
+            except Exception:
+                continue  # error de red, reintentar luego
+            # Reintento de la orden
+            tsr = ts_execute("buy", rq["clob_token"], round(use_price,2), rq["size"])
+            if tsr.get("ok"):
+                oid = tsr.get("orderID") or "filled"
+                bridge["placed_orders"][mid] = {
+                    "order_id": oid, "clob_token": rq["clob_token"],
+                    "size": rq["size"], "price": use_price, "high_conf": rq.get("is_high_conf"),
+                }
+                del bridge["retry_queue"][mid]; save_bridge_state(bridge)
+                cost_usd = round(rq["size"]*use_price, 2)
+                print(f"  ✅ [RETRY-OK] COMPRA REAL EJECUTADA {rq.get('city')} {rq.get('date')} order_id={oid}")
+                _tg(
+                    f"{'⚡ ' if rq.get('is_high_conf') else ''}*🟢 COMPRA REAL EJECUTADA (auto-reintento)*\n"
+                    f"_Tu cuenta ya opera en Polymarket v2 — dinero real_\n\n"
+                    f"*Mercado:* {rq.get('city')} — {rq.get('date')}\n*Rango:* {rq.get('bucket')}\n"
+                    f"*Precio:* ${use_price:.3f}\n*Cantidad:* {rq['size']} shares (${cost_usd:.2f})\n"
+                    f"*EV:* {rq.get('ev',0):+.2f}\n\n_{_ts()}_"
+                )
+            else:
+                save_bridge_state(bridge)  # persistir last_retry
+
         markets = load_all_markets()
 
         # ── 1. CERRAR posiciones que el weatherbot marcó como cerradas ──────
@@ -630,11 +686,14 @@ async def run_bridge():
                 await asyncio.sleep(1)
 
         # ── 2. ABRIR nuevas posiciones ───────────────────────────────────────
+        # Excluir las que ya están en placed_orders O en la cola de reintento
+        # (esas las gestiona el procesador de reintento de arriba).
         pending = [
             m for m in markets
             if m.get("position")
             and m["position"].get("status") == "open"
             and (m["position"].get("market_id") or m.get("market_id")) not in bridge["placed_orders"]
+            and (m["position"].get("market_id") or m.get("market_id")) not in bridge.get("retry_queue", {})
             and m.get("status") == "open"
         ]
 
@@ -791,12 +850,14 @@ async def run_bridge():
                 await asyncio.sleep(1)
                 continue
             else:
-                # Falló la ejecución automática → alerta para ejecución manual
+                # Falló la ejecución automática → alerta UNA vez + cola de reintento.
+                # El bridge reintentará la orden cada RETRY_INTERVAL min sin re-alertar;
+                # en cuanto la cuenta migre a v2 server-side, entrará automática.
                 err_short = str(tsr.get("error",""))[:80]
-                print(f"  [TS-FALLO→ALERTA] {city} {date}: {err_short}")
+                print(f"  [TS-FALLO→COLA-REINTENTO] {city} {date}: {err_short}")
                 _tg(
-                    f"{'⚡ ' if is_high_conf else ''}🎯 *OPORTUNIDAD — Ejecutar manualmente*\n"
-                    f"_(auto-ejecución falló: migración Polymarket v2 en curso)_\n\n"
+                    f"{'⚡ ' if is_high_conf else ''}🎯 *OPORTUNIDAD DETECTADA*\n"
+                    f"_(intentando auto-ejecución; reintento activo. Puedes ejecutar manual si quieres)_\n\n"
                     f"*Mercado:* {city} — {date}\n"
                     f"*Rango:* {bucket}\n"
                     f"*Precio sugerido:* ${price:.3f}\n"
@@ -806,10 +867,11 @@ async def run_bridge():
                     f"👉 *Abrir mercado:* https://polymarket.com/markets/{market_id}\n\n"
                     f"_{_ts()}_"
                 )
-                bridge["placed_orders"][market_id] = {
-                    "order_id": "alert_only", "clob_token": clob_token,
-                    "size": size, "price": price, "high_conf": is_high_conf,
-                    "alert_only": True,
+                bridge["retry_queue"][market_id] = {
+                    "clob_token": clob_token, "size": size, "price": price,
+                    "is_high_conf": is_high_conf, "city": city, "date": date,
+                    "bucket": bucket, "ev": ev, "last_retry": now_epoch,
+                    "alerted": True,
                 }
                 save_bridge_state(bridge)
                 await asyncio.sleep(1)
