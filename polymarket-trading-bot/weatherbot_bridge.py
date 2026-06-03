@@ -66,6 +66,36 @@ from py_clob_client.constants import POLYGON
 # ─────────────────────────────────────────────────────────────────────────────
 SDK_BROKEN = True   # False cuando py-clob-client soporte el Exchange v2
 
+# ── Ejecutor TypeScript (cliente oficial v5.8.1 parcheado a Exchange v2) ───────
+# El SDK Python no soporta el Exchange v2 de Polymarket. El cliente TS sí tiene
+# la lógica de firmado v2 (parcheado con version "2" + direcciones nuevas). El
+# bridge intenta ejecutar la orden REAL vía este ejecutor Node; si falla (p.ej.
+# la cuenta aún no migrada server-side → order_version_mismatch), cae a alerta
+# Telegram para ejecución manual. En cuanto Polymarket complete la migración de
+# la cuenta, las órdenes se ejecutarán solas SIN cambiar nada.
+import subprocess as _sp
+TS_EXECUTOR = Path(__file__).parent / "ts_executor" / "executor.js"
+
+def ts_execute(side: str, token_id: str, price: float, size: float) -> dict:
+    """Ejecuta una orden real vía el cliente TS. Devuelve dict con ok/error."""
+    if not TS_EXECUTOR.exists():
+        return {"ok": False, "error": "executor.js no encontrado"}
+    try:
+        r = _sp.run(
+            ["node", str(TS_EXECUTOR), side, str(token_id), f"{price:.4f}", f"{size:.2f}"],
+            capture_output=True, text=True, timeout=40,
+            cwd=str(TS_EXECUTOR.parent),
+        )
+        line = (r.stdout or "").strip().splitlines()
+        for l in reversed(line):
+            l = l.strip()
+            if l.startswith("{"):
+                try: return json.loads(l)
+                except Exception: continue
+        return {"ok": False, "error": (r.stderr or r.stdout or "sin salida")[:200]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:200]}
+
 # ── Config ────────────────────────────────────────────────────────────────────
 PRIVATE_KEY       = os.environ["POLY_PRIVATE_KEY"]
 MAX_BET           = float(os.getenv("BRIDGE_MAX_BET", "5.0"))
@@ -471,28 +501,49 @@ async def run_bridge():
                 # Floor (no round) para nunca pedir más shares de las que tenemos
                 sell_shares = math.floor(real_shares * 100) / 100
 
-                # ── MODO ALERT-ONLY para VENTAS (cuando el SDK está roto) ────
-                # El stop-loss / trailing / forecast-changed / take-profit deben
-                # poder SALIR aunque el SDK no pueda firmar la orden v2. En lugar
-                # de fallar silenciosamente (acumulando sell_errors), avisamos a
-                # Telegram con URGENCIA para que el usuario venda manualmente YA.
-                if SDK_BROKEN:
-                    reason_labels_alert = {
-                        "take_profit":          "🎯 TAKE PROFIT",
-                        "take_profit_2x":       "🎯 TAKE PROFIT (≥100% ganancia)",
-                        "take_profit_near_win": "🎯 TAKE PROFIT (casi ganador)",
-                        "take_profit_end":      "🎯 TAKE PROFIT (cierre con ≥50%)",
-                        "stop_loss":            "🛑 STOP LOSS — cortar pérdida",
-                        "trailing_stop":        "🛑 TRAILING STOP",
-                        "forecast_changed":     "🌦️ PREVISIÓN CAMBIÓ — salir",
-                        "pre_resolution_close": "⏰ CIERRE PRE-RESOLUCIÓN",
-                    }
-                    motivo = reason_labels_alert.get(close_reason, close_reason)
-                    entry  = pos.get("entry_price", sell_price)
-                    urgente = close_reason in ("stop_loss", "trailing_stop", "forecast_changed")
+                # ── VENTA AUTÓNOMA vía cliente TS (Exchange v2) ──────────────
+                # Intentar vender REAL con el ejecutor TS. Si falla → alerta
+                # URGENTE para venta manual (stop-loss/forecast no pueden esperar).
+                reason_labels_alert = {
+                    "take_profit":          "🎯 TAKE PROFIT",
+                    "take_profit_2x":       "🎯 TAKE PROFIT (≥100% ganancia)",
+                    "take_profit_near_win": "🎯 TAKE PROFIT (casi ganador)",
+                    "take_profit_end":      "🎯 TAKE PROFIT (cierre con ≥50%)",
+                    "stop_loss":            "🛑 STOP LOSS — cortar pérdida",
+                    "trailing_stop":        "🛑 TRAILING STOP",
+                    "forecast_changed":     "🌦️ PREVISIÓN CAMBIÓ — salir",
+                    "pre_resolution_close": "⏰ CIERRE PRE-RESOLUCIÓN",
+                }
+                motivo = reason_labels_alert.get(close_reason, close_reason)
+                entry  = pos.get("entry_price", sell_price)
+                pnl    = round((sell_price - entry) * sell_shares, 2)
+                urgente = close_reason in ("stop_loss", "trailing_stop", "forecast_changed")
+
+                print(f"[{_ts()}] CERRANDO {city} {date} | {close_reason} | ${sell_price:.3f} x {sell_shares} → ejecutor TS")
+                tsr = ts_execute("sell", clob_token, sell_price, sell_shares)
+                if tsr.get("ok"):
+                    sell_id = tsr.get("orderID") or "sold"
+                    bridge["closed_orders"][market_id] = sell_id
+                    bridge["sell_errors"].pop(market_id, None)
+                    save_bridge_state(bridge)
+                    icon = "🟢" if pnl >= 0 else "🟡"
+                    print(f"  ✅ VENTA REAL EJECUTADA (TS) order_id={sell_id} | PnL {pnl:+.2f}")
+                    _tg(
+                        f"{icon} *VENTA REAL EJECUTADA — {motivo}*\n"
+                        f"_Automática vía cliente v2 — dinero real USDC_\n\n"
+                        f"*Mercado:* {city} — {date}\n"
+                        f"*Entrada:* ${entry:.3f} → *Salida:* ${sell_price:.3f}\n"
+                        f"*Cantidad:* {sell_shares} shares\n"
+                        f"*Resultado:* {'+' if pnl>=0 else ''}{pnl:.2f}$\n\n_{_ts()}_"
+                    )
+                    await asyncio.sleep(1)
+                    continue
+                else:
+                    # Falló venta automática → alerta urgente manual
+                    print(f"  [TS-FALLO→ALERTA] venta {city} {date}: {str(tsr.get('error',''))[:80]}")
                     _tg(
                         f"{'🚨🚨 ' if urgente else ''}*VENDER MANUALMENTE — {motivo}*\n"
-                        f"_(SDK v2 bug: ejecutar venta en la UI ahora)_\n\n"
+                        f"_(auto-venta falló: migración Polymarket v2 en curso)_\n\n"
                         f"*Mercado:* {city} — {date}\n"
                         f"*Entrada:* ${entry:.3f} → *Vender a:* ${sell_price:.3f}\n"
                         f"*Cantidad:* {sell_shares} shares\n"
@@ -708,23 +759,44 @@ async def run_bridge():
             except Exception as e:
                 print(f"  [PRE-EXEC] warn: no se pudo verificar precio en vivo: {e}")
 
-            # ── MODO ALERT-ONLY (cuando el SDK está roto) ────────────────────
-            # Si SDK_BROKEN=True, en lugar de mandar la orden mando a Telegram
-            # un aviso con link directo al mercado para ejecución manual.
-            if SDK_BROKEN:
-                # Construir slug del evento para link a Polymarket UI
-                slug_city = city.lower().replace(' ', '-').replace('(','').replace(')','')
-                date_url  = date.replace('-', '-')
-                hc_line = ""
-                if is_high_conf and ens_agree is not None:
-                    hc_line = (
-                        f"\n⚡ *ALTA CONFIANZA* — {pos.get('ensemble_models','?')} modelos coinciden\n"
-                        f"*Acuerdo:* {ens_agree:.0%} | *Ventaja:* {mkt_lag:+.0%}"
-                    )
-                cost_usd = round(size * price, 2)
+            # ── EJECUCIÓN AUTÓNOMA vía cliente TS (Exchange v2) ──────────────
+            # Intentamos colocar la orden REAL con el ejecutor TS parcheado a v2.
+            # Si tiene éxito → posición abierta automáticamente, sin intervención.
+            # Si falla (cuenta aún no migrada server-side) → caemos a alerta.
+            cost_usd = round(size * price, 2)
+            hc_line = ""
+            if is_high_conf and ens_agree is not None:
+                hc_line = (
+                    f"\n⚡ *ALTA CONFIANZA* — {pos.get('ensemble_models','?')} modelos coinciden\n"
+                    f"*Acuerdo:* {ens_agree:.0%} | *Ventaja:* {mkt_lag:+.0%}"
+                )
+
+            print(f"[{_ts()}] BUY{hc_label} {city} {date} {bucket} | ${price:.3f} x {size} | EV {ev:+.2f} → ejecutor TS")
+            tsr = ts_execute("buy", clob_token, round(price, 2), size)
+            if tsr.get("ok"):
+                order_id = tsr.get("orderID") or "filled"
+                bridge["placed_orders"][market_id] = {
+                    "order_id": order_id, "clob_token": clob_token,
+                    "size": size, "price": price, "high_conf": is_high_conf,
+                }
+                save_bridge_state(bridge)
+                print(f"  ✅ COMPRA REAL EJECUTADA (TS) order_id={order_id}")
                 _tg(
-                    f"{'⚡ ' if is_high_conf else ''}🎯 *OPORTUNIDAD DETECTADA — Ejecutar manualmente*\n"
-                    f"_(SDK Polymarket bug en formato de orden, ejecutar en UI)_\n\n"
+                    f"{'⚡ ' if is_high_conf else ''}*🟢 COMPRA REAL EJECUTADA{hc_label}*\n"
+                    f"_Automática vía cliente v2 — dinero real USDC_\n\n"
+                    f"*Mercado:* {city} — {date}\n*Rango:* {bucket}\n"
+                    f"*Precio:* ${price:.3f}\n*Cantidad:* {size} shares (${cost_usd:.2f})\n"
+                    f"*EV:* {ev:+.2f}{hc_line}\n\n_{_ts()}_"
+                )
+                await asyncio.sleep(1)
+                continue
+            else:
+                # Falló la ejecución automática → alerta para ejecución manual
+                err_short = str(tsr.get("error",""))[:80]
+                print(f"  [TS-FALLO→ALERTA] {city} {date}: {err_short}")
+                _tg(
+                    f"{'⚡ ' if is_high_conf else ''}🎯 *OPORTUNIDAD — Ejecutar manualmente*\n"
+                    f"_(auto-ejecución falló: migración Polymarket v2 en curso)_\n\n"
                     f"*Mercado:* {city} — {date}\n"
                     f"*Rango:* {bucket}\n"
                     f"*Precio sugerido:* ${price:.3f}\n"
@@ -734,17 +806,12 @@ async def run_bridge():
                     f"👉 *Abrir mercado:* https://polymarket.com/markets/{market_id}\n\n"
                     f"_{_ts()}_"
                 )
-                # Marcar como "alerted" para no repetir
                 bridge["placed_orders"][market_id] = {
-                    "order_id":   "alert_only",
-                    "clob_token": clob_token,
-                    "size":       size,
-                    "price":      price,
-                    "high_conf":  is_high_conf,
+                    "order_id": "alert_only", "clob_token": clob_token,
+                    "size": size, "price": price, "high_conf": is_high_conf,
                     "alert_only": True,
                 }
                 save_bridge_state(bridge)
-                print(f"  [ALERT-ONLY] {city} {date} señal enviada a Telegram (SDK roto)")
                 await asyncio.sleep(1)
                 continue
 

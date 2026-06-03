@@ -15,3 +15,7 @@ polymarket-trading-bot/bridge_state.json
 
 # IDE / local tooling
 .claude/
+
+# Node executor del cliente TS Polymarket (reinstalar con npm install + node apply_v2_patch.js)
+polymarket-trading-bot/ts_executor/node_modules/
+polymarket-trading-bot/ts_executor/package-lock.json

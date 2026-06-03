@@ -1,0 +1,10 @@
+{
+  "name": "weatherbot-ts-executor",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "private": true,
+  "dependencies": {
+    "@polymarket/clob-client": "latest",
+    "ethers": "^5.7.2"
+  }
+}
