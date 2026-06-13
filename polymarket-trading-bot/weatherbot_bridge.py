@@ -32,70 +32,53 @@ SAFE_ADDRESS = "0xd3842227909efc0893047c88822cde2db750130e"
 os.environ["POLY_SAFE_ADDRESS"] = SAFE_ADDRESS
 
 import requests as _req
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import OrderArgs, BalanceAllowanceParams
-from py_clob_client.constants import POLYGON
+from py_clob_client_v2 import (
+    ClobClient, OrderArgs, BalanceAllowanceParams, AssetType,
+    PartialCreateOrderOptions, OrderType,
+)
+from py_clob_client_v2.order_builder.constants import BUY as SIDE_BUY, SELL as SIDE_SELL
+POLYGON = 137
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CAUSA RAÍZ CONFIRMADA (investigado a nivel de contrato on-chain, 2026-05-31):
+# EJECUCIÓN AUTÓNOMA — Polymarket CLOB Exchange v2 (py_clob_client_v2)
 #
-# Polymarket migró su Exchange a un contrato NUEVO v2:
-#   0xe2222d279d744050d28e00520010520000310f59
-#   eip712Domain(): name="Polymarket CTF Exchange", version="2", chainId=137
+# Polymarket migró a Exchange v2 (junio 2026). El SDK viejo (py-clob-client)
+# firmaba órdenes V1 que el backend rechaza con "order_version_mismatch" /
+# "invalid order version". La solución (confirmada por soporte): usar el cliente
+# NUEVO py_clob_client_v2 con signature_type=1 (POLY_PROXY) y funder = Safe.
+# Verificado funcionando: orden colocada y aceptada (status "live", success True).
 #
-# La SDK py-clob-client 0.34.6 firma órdenes para los contratos VIEJOS
-# (0x4bFb... estándar, 0xC5d5... neg-risk) con domain version="1". El backend
-# rechaza esas firmas con {"error":"order_version_mismatch"}.
-#
-# Probado sin éxito (todo da el mismo error):
-#   - Patch del exchange address al nuevo 0xe222... + domain version "2"
-#   - 8 variantes de domain name, versiones 1 y 2
-#   - neg_risk explícito True/False, builder auth on/off, feeRateBps 0 y 1000
-# El contrato v2 cambió además la estructura/tipos de la orden, lo que requiere
-# una actualización OFICIAL del SDK (o reimplementar el firmado v2, que con
-# dinero real es demasiado arriesgado a ciegas).
-#
-# Verificado: las operaciones en la UI de Polymarket SÍ funcionan (usan el
-# cliente TypeScript actualizado que ya soporta v2). El trade manual del
-# usuario (Spain WC, 4-may) pasó por 0xe222... correctamente.
-#
-# MODO ALERT-ONLY: el bridge detecta cada señal y manda alerta accionable a
-# Telegram con link directo al mercado, para ejecución manual en 1 click.
-# Cuando salga py-clob-client v0.35+ con soporte v2: pip install --upgrade,
-# poner SDK_BROKEN=False y reiniciar → vuelve la auto-ejecución.
+# Cada mercado aporta su tick_size y neg_risk (se leen del cliente). El ejecutor
+# usa create_and_post_order con PartialCreateOrderOptions(tick_size, neg_risk).
 # ─────────────────────────────────────────────────────────────────────────────
-SDK_BROKEN = True   # False cuando py-clob-client soporte el Exchange v2
-
-# ── Ejecutor TypeScript (cliente oficial v5.8.1 parcheado a Exchange v2) ───────
-# El SDK Python no soporta el Exchange v2 de Polymarket. El cliente TS sí tiene
-# la lógica de firmado v2 (parcheado con version "2" + direcciones nuevas). El
-# bridge intenta ejecutar la orden REAL vía este ejecutor Node; si falla (p.ej.
-# la cuenta aún no migrada server-side → order_version_mismatch), cae a alerta
-# Telegram para ejecución manual. En cuanto Polymarket complete la migración de
-# la cuenta, las órdenes se ejecutarán solas SIN cambiar nada.
-import subprocess as _sp
-TS_EXECUTOR = Path(__file__).parent / "ts_executor" / "executor.js"
 RETRY_INTERVAL = int(os.getenv("BRIDGE_RETRY_SECONDS", "180"))  # reintento cola cada 3 min
 
-def ts_execute(side: str, token_id: str, price: float, size: float) -> dict:
-    """Ejecuta una orden real vía el cliente TS. Devuelve dict con ok/error."""
-    if not TS_EXECUTOR.exists():
-        return {"ok": False, "error": "executor.js no encontrado"}
+def execute_order(client, side: str, token_id: str, price: float, size: float) -> dict:
+    """Coloca una orden REAL vía py_clob_client_v2. Devuelve {ok, orderID, error}."""
     try:
-        r = _sp.run(
-            ["node", str(TS_EXECUTOR), side, str(token_id), f"{price:.4f}", f"{size:.2f}"],
-            capture_output=True, text=True, timeout=40,
-            cwd=str(TS_EXECUTOR.parent),
+        neg_risk = bool(client.get_neg_risk(token_id))
+        tick = client.get_tick_size(token_id)   # string p.ej. "0.01"
+        order_side = SIDE_BUY if side == "buy" else SIDE_SELL
+        resp = client.create_and_post_order(
+            OrderArgs(token_id=token_id, price=round(price, 4), size=size, side=order_side),
+            options=PartialCreateOrderOptions(tick_size=str(tick), neg_risk=neg_risk),
+            order_type=OrderType.GTC,
         )
-        line = (r.stdout or "").strip().splitlines()
-        for l in reversed(line):
-            l = l.strip()
-            if l.startswith("{"):
-                try: return json.loads(l)
-                except Exception: continue
-        return {"ok": False, "error": (r.stderr or r.stdout or "sin salida")[:200]}
+        oid = resp.get("orderID") or resp.get("orderId")
+        ok  = bool(resp.get("success") or oid) and not resp.get("error")
+        return {"ok": ok, "orderID": oid, "status": resp.get("status"),
+                "error": resp.get("error") or resp.get("errorMsg") or None}
     except Exception as e:
-        return {"ok": False, "error": str(e)[:200]}
+        return {"ok": False, "orderID": None, "error": str(e)[:200]}
+
+# Cliente v2 global (lazy-init en run_bridge), reutilizado por execute_order
+_V2_CLIENT = None
+def ts_execute(side: str, token_id: str, price: float, size: float) -> dict:
+    """Compat: wrapper que usa el cliente v2 global (antes era el ejecutor TS)."""
+    global _V2_CLIENT
+    if _V2_CLIENT is None:
+        return {"ok": False, "error": "cliente v2 no inicializado"}
+    return execute_order(_V2_CLIENT, side, token_id, price, size)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 PRIVATE_KEY       = os.environ["POLY_PRIVATE_KEY"]
@@ -181,7 +164,7 @@ def get_real_shares(client: ClobClient, clob_token: str) -> float:
     """Consulta el balance real de un token en nuestra cuenta (en shares)."""
     try:
         params = BalanceAllowanceParams(
-            asset_type="CONDITIONAL",
+            asset_type=AssetType.CONDITIONAL,
             token_id=clob_token,
             signature_type=1,
         )
@@ -223,24 +206,26 @@ def get_pusd_balance() -> float:
 
 
 def build_clob_client() -> ClobClient:
-    """Crea cliente oficial de Polymarket CLOB con creds L2 derivadas."""
+    """Crea cliente Polymarket CLOB v2 con creds L2 derivadas (sig_type=1)."""
     c0 = ClobClient(
         host="https://clob.polymarket.com",
         key=PRIVATE_KEY,
         chain_id=POLYGON,
-        signature_type=1,
-        funder=SAFE_ADDRESS,
     )
-    l2 = c0.create_or_derive_api_creds()
-    print(f"[{_ts()}] L2 creds derivadas: {l2.api_key}")
-    return ClobClient(
+    l2 = c0.derive_api_key()   # idempotente para un mismo EOA (evita 400 de create)
+    print(f"[{_ts()}] L2 creds derivadas (v2): {l2.api_key}")
+    client = ClobClient(
         host="https://clob.polymarket.com",
         key=PRIVATE_KEY,
         chain_id=POLYGON,
         creds=l2,
-        signature_type=1,
+        signature_type=1,      # POLY_PROXY (wallet de Polymarket, NO Gnosis Safe)
         funder=SAFE_ADDRESS,
     )
+    # Exponer como cliente global para execute_order / ts_execute
+    global _V2_CLIENT
+    _V2_CLIENT = client
+    return client
 
 
 # ── Resumen diario ────────────────────────────────────────────────────────────
